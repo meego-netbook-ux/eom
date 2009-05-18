@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script
 
-AC_INIT(src/main.c)
-AM_INIT_AUTOMAKE(eom, 0.1, [foreign])
+AC_INIT([eom], [0.1])
+AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_MACRO_DIR([shave])
 
 AM_CONFIG_HEADER(config.h)
