@@ -1,5 +1,8 @@
 #include "config.h"
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <gio/gio.h>
 #include <clutter/clutter.h>
 #include <tidy/tidy-viewport.h>
@@ -245,7 +248,7 @@ start_rotate_viewport (TidyViewport* viewport, gboolean right)
   tidy_viewport_get_origin (viewport, &start, NULL, NULL);
   gint old_target = target;
   target = right ? target + 10000 : target - 10000;
-  slide_viewport (viewport, old_target, target, 10000 / RECT_GAP * 10);
+  slide_viewport (viewport, old_target, target, 10000 / RECT_GAP * 5);
 }
 #endif
 
@@ -610,14 +613,53 @@ main (int argc, char **argv)
 {
   ClutterActor *stage, *viewport, *group;
   ClutterColor stage_color = { 0x34, 0x39, 0x39, 0xff };
+  gboolean hide_cursor = FALSE;
+  int double_click_radius = 10, c;
 
   clutter_init (&argc, &argv);
 
+  while ((c = getopt (argc, argv, "hr:")) != -1)
+    switch (c)
+      {
+      case 'h':
+        hide_cursor = TRUE;
+        break;
+      case 'r':
+        double_click_radius = atoi(optarg);
+        break;
+      case '?':
+        if (optopt == 'r')
+          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+        else if (isprint (optopt))
+          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+        else
+          fprintf (stderr,
+                   "Unknown option character `\\x%x'.\n",
+                   optopt);
+        return 1;
+      default:
+        abort ();
+      }
+
   stage = clutter_stage_get_default ();
+
+  if (hide_cursor)
+    clutter_stage_hide_cursor (CLUTTER_STAGE(stage));
+
+  printf ("SETTING DOUBLE CLICK DISTANCE = %d\n", double_click_radius);
+  clutter_backend_set_double_click_distance (clutter_get_default_backend (),
+                                             double_click_radius);
+
+  const char* folder;
+  if (optind < argc)
+    folder = argv[optind];
+  else
+    folder = EOM_SAMPLE_DIR;
+  printf ("LOADING FROM %s\n", folder);
 
   clutter_stage_set_color (CLUTTER_STAGE (stage), &stage_color);
   //  clutter_stage_set_use_fog (CLUTTER_STAGE (stage), TRUE);
-  clutter_actor_set_size (stage, 1280, 800);
+  //clutter_actor_set_size (stage, 1280, 800);
   clutter_stage_fullscreen (CLUTTER_STAGE(stage));
   viewport = tidy_viewport_new ();
   g_viewport = viewport;
@@ -626,7 +668,7 @@ main (int argc, char **argv)
 
   pic_group = group = tidy_depth_group_new ();
   //  add_rects (stage, group);
-  add_pics (stage, group, argc > 1 ? argv[1] : EOM_SAMPLE_DIR);
+  add_pics (stage, group, folder);
   clutter_container_add_actor (CLUTTER_CONTAINER (viewport), group);
   g_signal_connect (viewport, "notify::x-origin",
                     G_CALLBACK (viewport_x_origin_notify_cb), group);
