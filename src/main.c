@@ -27,6 +27,8 @@ static gint single_view_x0, single_view_y0;
 static GList* pic_actors;
 static gint total_pics;
 
+static int g_speed = 30;
+
 void switch_to_single_view (ClutterGroup* group);
 void single_view_navigate (gboolean next);
 gboolean is_in_single_view_mode();
@@ -248,7 +250,7 @@ start_rotate_viewport (TidyViewport* viewport, gboolean right)
   tidy_viewport_get_origin (viewport, &start, NULL, NULL);
   gint old_target = target;
   target = right ? target + 10000 : target - 10000;
-  slide_viewport (viewport, old_target, target, 10000 / RECT_GAP * 5);
+  slide_viewport (viewport, old_target, target, 10000 / RECT_GAP * g_speed);
 }
 #endif
 
@@ -608,6 +610,14 @@ add_rects (ClutterActor *stage, ClutterActor *group)
 }
 #endif
 
+void
+usage(const char* self_name)
+{
+  printf("%s: [-h] [-r <double click radius>] [-s <speed (default 30, bigger is slower)>] \
+[image folder]\n", self_name);
+}
+
+
 int
 main (int argc, char **argv)
 {
@@ -618,7 +628,7 @@ main (int argc, char **argv)
 
   clutter_init (&argc, &argv);
 
-  while ((c = getopt (argc, argv, "hr:")) != -1)
+  while ((c = getopt (argc, argv, "hr:s:")) != -1)
     switch (c)
       {
       case 'h':
@@ -626,6 +636,9 @@ main (int argc, char **argv)
         break;
       case 'r':
         double_click_radius = atoi(optarg);
+        break;
+      case 's':
+        g_speed = atoi(optarg);
         break;
       case '?':
         if (optopt == 'r')
@@ -636,8 +649,10 @@ main (int argc, char **argv)
           fprintf (stderr,
                    "Unknown option character `\\x%x'.\n",
                    optopt);
+        usage (argv[0]);
         return 1;
       default:
+        usage (argv[0]);
         abort ();
       }
 
