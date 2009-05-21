@@ -1,2 +1,22 @@
 after make, run 
-    src/eom <img dir>
+    src/eom [-h] [-r <double click radius>] [-s <speed (default 30, bigger is slower)>] <image folder>
+
+-h is for hiding the mouse cursor
+-s is for changing the image navigation speed, 
+   the default is 30, bigger is slower.
+
+Usage
+=====
+
+1 single-click on left or right side of screen: show the prev/next image
+2 slide left: navigate the images forward
+3 slide right: navigate the images backward
+4 double click: show the image in full screen
+
+when you're viewing single picture:
+
+1 slide left: show the next image
+2 slide right: show the previous image
+3 slide up: zoom in
+4 slide down: zoom out
+5 double click: exit the full screen mode
