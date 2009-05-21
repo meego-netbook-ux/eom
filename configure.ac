@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script
 
-AC_INIT([eom], [0.1])
+AC_INIT([eom], [0.2])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_MACRO_DIR([shave])
 
@@ -10,7 +10,7 @@ AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_LIBTOOL
 
-EOM_MODULES='clutter-0.9 glib-2.0'
+EOM_MODULES='clutter-0.9 glib-2.0 gio-2.0'
 EOM_SAMPLE_DIR="`pwd`/images"
 
 AC_ARG_ENABLE(gesture,
