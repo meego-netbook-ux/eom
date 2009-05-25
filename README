@@ -1,3 +1,12 @@
+INSTALL
+=======
+You need to install the dependencies first, including development library of clutter, clutter-gesture, gio 
+
+./autogen.sh
+make
+
+RUN
+===
 after make, run 
     src/eom [-h] [-r <double click radius>] [-s <speed (default 30, bigger is slower)>] <image folder>
 
