@@ -10,7 +10,7 @@ AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_LIBTOOL
 
-EOM_MODULES='clutter-0.9 glib-2.0 gio-2.0'
+EOM_MODULES='clutter-0.9 glib-2.0 gio-2.0 clutter-box2d-0.9'
 EOM_SAMPLE_DIR="`pwd`/images"
 
 AC_ARG_ENABLE(gesture,
@@ -46,6 +46,7 @@ AC_CONFIG_FILES([
     Makefile
     src/Makefile
     tidy/Makefile
+    physics/Makefile
 ])
 
 dnl End the configure script.
