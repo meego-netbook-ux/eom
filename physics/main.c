@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include <gio/gio.h>
 #include <clutter/clutter.h>
+#include <clutter-gst/clutter-gst.h>
 #include <clutter-box2d.h>
 #include "config.h"
 #include "blockbox.h"
@@ -53,30 +54,146 @@ scene_get_group()
 }
 
 static void
+size_change (ClutterTexture *texture,
+	     gint            width,
+	     gint            height,
+	     gpointer        user_data)
+{
+  gint           new_x, new_y, new_width, new_height;
+
+  new_height = ( height * CLUTTER_STAGE_WIDTH() ) / width;
+  if (new_height <= CLUTTER_STAGE_HEIGHT())
+    {
+      new_width = CLUTTER_STAGE_WIDTH();
+
+      new_x = 0;
+      new_y = (CLUTTER_STAGE_HEIGHT() - new_height) / 2;
+    }
+  else
+    {
+      new_width  = ( width * CLUTTER_STAGE_HEIGHT() ) / height;
+      new_height = CLUTTER_STAGE_HEIGHT();
+
+      new_x = (CLUTTER_STAGE_WIDTH() - new_width) / 2;
+      new_y = 0;
+    }
+
+  clutter_actor_set_position (CLUTTER_ACTOR (texture), new_x, new_y);
+
+  clutter_actor_set_size (CLUTTER_ACTOR (texture),
+			  new_width,
+			  new_height);
+}
+
+
+static void
+add_actor_to_cage (ClutterActor* actor, ClutterActor* group)
+{
+  int width, height;
+  gint x, y;
+  x = clutter_actor_get_width (clutter_stage_get_default ()) / 2;
+  y = clutter_actor_get_height (clutter_stage_get_default ()) * 0.8;
+  ClutterColor bg_color = { 0xff, 0xff, 0xff, 0xff };
+
+  clutter_actor_get_size (actor, &width, &height);
+  /* the frame of the picture */
+
+  ClutterActor* frame = clutter_group_new();
+  ClutterActor* margin = clutter_rectangle_new_with_color (&bg_color);
+  clutter_actor_set_size (margin, width + MARGIN * 2, height + MARGIN * 2);
+  clutter_group_add (CLUTTER_GROUP (frame), margin);
+  clutter_group_add (CLUTTER_GROUP (frame), actor);
+  clutter_actor_set_position (actor, MARGIN, MARGIN);
+
+  /* setting name so the manipulator can work */
+  clutter_actor_set_name (frame, "frame");
+  clutter_actor_set_name (margin, "margin");
+  clutter_actor_set_name (actor, "pic");
+
+  clutter_group_add (CLUTTER_GROUP (group), frame);
+  clutter_actor_set_position (frame, x, y);
+
+  clutter_container_child_set (CLUTTER_CONTAINER (group), frame,
+                               "manipulatable", TRUE,
+                               "mode", CLUTTER_BOX2D_DYNAMIC, NULL);
+
+  pic_actors = g_list_append (pic_actors, actor);
+}
+
+static void
 add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
 {
   GFileEnumerator *file_enumerator;
   GFile* root = g_file_new_for_path (img_folder);
   const char *mime_type, *name;
-  ClutterActor* actor;
+  ClutterActor* actor, *texture;
   int i = 0;
+  GstElement      *pipeline;
+  GstElement       *src;
+  GstElement       *warp;
+  GstElement       *colorspace;
+  GstElement       *sink;
+  static ClutterTimeline  *timeline = NULL;
+
   total_pics = 0;
   file_enumerator = g_file_enumerate_children (root,
                                                G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE ","
                                                G_FILE_ATTRIBUTE_STANDARD_NAME,
                                                0, NULL, NULL);
   GFileInfo* file_info = g_file_enumerator_next_file (file_enumerator, NULL, NULL);
-  gint x, y;
-  x = clutter_actor_get_width (clutter_stage_get_default ()) / 2;
-  y = clutter_actor_get_height (clutter_stage_get_default ()) * 0.8;
-  ClutterColor bg_color = { 0xff, 0xff, 0xff, 0xff };
 
   while (file_info != NULL)
     {
       mime_type = g_file_info_get_content_type (file_info);
       name = g_file_info_get_name (file_info);
 
-      if (strstr(mime_type, "image/") == mime_type)
+      if (strstr(mime_type, "video/") == mime_type)
+        {
+          printf("adding %s (%s) ... ", name, mime_type);
+          texture = g_object_new (CLUTTER_TYPE_TEXTURE,
+                                  "sync-size",       FALSE,
+                                  "disable-slicing", TRUE,
+                                  NULL);
+          clutter_actor_set_size (texture, RECT_W * 2, RECT_W * 2);
+          /* g_signal_connect (CLUTTER_TEXTURE (texture), */
+          /*                   "size-change", */
+          /*                   G_CALLBACK (size_change), NULL); */
+
+          /* Set up pipeline */
+          sink = clutter_gst_video_sink_new (CLUTTER_TEXTURE (texture));
+          pipeline = gst_element_factory_make ("playbin", "player");
+          g_object_set (pipeline,
+                        "video-sink", sink,
+                        NULL);
+
+          /* pipeline = GST_PIPELINE(gst_pipeline_new (NULL)); */
+
+          /* src = gst_element_factory_make ("videotestsrc", NULL); */
+          /* warp = gst_element_factory_make ("warptv", NULL); */
+          /* colorspace = gst_element_factory_make ("ffmpegcolorspace", NULL); */
+
+          /* gst_bin_add_many (GST_BIN (pipeline), src, warp, colorspace, sink, NULL); */
+          /* gst_element_link_many (src, warp, colorspace, sink, NULL); */
+          GFile* file = g_file_get_child (root, name);
+          char* uri = g_file_get_uri (file);
+
+          g_object_set (pipeline, "uri", uri, NULL);
+          g_free (uri);
+          g_object_unref (file);
+
+          gst_element_set_state (GST_ELEMENT(pipeline), GST_STATE_PLAYING);
+
+          add_actor_to_cage (texture, group);
+          if (!timeline)
+            {
+              timeline = clutter_timeline_new (100, 30); /* num frames, fps */
+              g_object_set(timeline, "loop", TRUE, NULL);
+              clutter_timeline_start (timeline);
+            }
+          i++;
+          printf("\n");
+        }
+      else if (strstr(mime_type, "image/") == mime_type)
         {
           GFile* file = g_file_get_child (root, name);
           const char* path = g_file_get_path (file);
@@ -88,29 +205,8 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
               clutter_texture_get_base_size (CLUTTER_TEXTURE(actor), &width, &height);
 
               gint disp_height = height * RECT_W / width;
-
-              /* the frame of the picture */
               clutter_actor_set_size (actor, RECT_W, disp_height);
-              ClutterActor* frame = clutter_group_new();
-              ClutterActor* margin = clutter_rectangle_new_with_color (&bg_color);
-              clutter_actor_set_size (margin, RECT_W + MARGIN * 2, disp_height + MARGIN * 2);
-              clutter_group_add (CLUTTER_GROUP (frame), margin);
-              clutter_group_add (CLUTTER_GROUP (frame), actor);
-              clutter_actor_set_position (actor, MARGIN, MARGIN);
-
-              /* setting name so the manipulator can work */
-              clutter_actor_set_name (frame, "frame");
-              clutter_actor_set_name (margin, "margin");
-              clutter_actor_set_name (actor, "pic");
-
-              clutter_group_add (CLUTTER_GROUP (group), frame);
-              clutter_actor_set_position (frame, x, y);
-
-              clutter_container_child_set (CLUTTER_CONTAINER (group), frame,
-                               "manipulatable", TRUE,
-                               "mode", CLUTTER_BOX2D_DYNAMIC, NULL);
-
-              pic_actors = g_list_append (pic_actors, actor);
+              add_actor_to_cage (actor, group);
               i++;
               printf ("\n");
             }
@@ -321,6 +417,8 @@ main (int   argc,
   int double_click_radius = 10, c;
 
   clutter_init (&argc, &argv);
+  gst_init (&argc, &argv);
+
   while ((c = getopt (argc, argv, "fhr:")) != -1)
     switch (c)
       {
