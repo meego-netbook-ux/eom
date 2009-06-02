@@ -138,32 +138,17 @@ pic_table ()
 
   group_ = group = clutter_box2d_new ();
   add_cage (group, TRUE);
-
+  clutter_actor_set_name (group, "cage");
   clutter_group_add (CLUTTER_GROUP (stage), group);
   clutter_box2d_set_simulating (CLUTTER_BOX2D (group), 1);
 
   g_object_set (group, "gravity", &gravity, NULL);
-
-
-  /* while (i--) */
-  /*   { */
-  /*     gint x, y; */
-  /*     x = clutter_actor_get_width (clutter_stage_get_default ()) / 2; */
-  /*     y = clutter_actor_get_height (clutter_stage_get_default ()) * 0.8; */
-
-  /*     clutter_container_child_set (CLUTTER_CONTAINER (group), */
-  /*                                  add_hand (group, x, y), */
-  /*                                  "manipulatable", TRUE, */
-  /*                                  "mode", CLUTTER_BOX2D_DYNAMIC, */
-  /*                                  NULL); */
-  /*   } */
-
 }
 
 static void
 usage(const char* self_name)
 {
-  printf("%s: [-h] [-r <double click radius>] [image folder]\n", self_name);
+  printf("%s: [-h] [-f] [-r <double click radius>] [image folder]\n", self_name);
 }
 
 ClutterActor*
@@ -258,6 +243,26 @@ gesture_cb (ClutterGesture    *gesture,
   return TRUE;
 }
 
+static void
+scale_normal(ClutterTimeline *timeline, ClutterActor* actor)
+{
+  if (actor)
+    clutter_actor_animate (actor, CLUTTER_LINEAR, 1000,
+                          "scale-x", 1.0, "scale-y", 1.0, NULL);
+}
+
+static void
+scale_back(ClutterTimeline *timeline, ClutterActor* actor)
+{
+  if (actor)
+    {
+      ClutterAnimation* view_ani = clutter_actor_animate (actor, CLUTTER_LINEAR, 3000,
+                                                          "scale-x", 3.0, "scale-y", 3.0, NULL);
+      ClutterTimeline* timeline = clutter_animation_get_timeline (view_ani);
+      g_signal_connect (timeline, "completed", G_CALLBACK(scale_normal), actor);
+    }
+}
+
 static gboolean
 button_press (ClutterActor *stage,
               ClutterEvent *event,
@@ -279,10 +284,30 @@ button_press (ClutterActor *stage,
       g_object_unref (timeline);
       g_hash_table_remove (animations, actor);
     }
+  else if (event->button.click_count == 2)
+    {
+      ClutterAnimation* view_ani = clutter_actor_animate (actor, CLUTTER_EASE_OUT_BACK, 1000,
+                                                          "scale-x", 3.0, "scale-y", 3.0, NULL);
+      ClutterTimeline* timeline = clutter_animation_get_timeline (view_ani);
+      g_signal_connect (timeline, "completed", G_CALLBACK(scale_back), actor);
+    }
+
   return FALSE;
 }
 
 #endif
+
+static void
+stage_key_press_event_cb (ClutterActor *actor, ClutterKeyEvent *event,
+                          gpointer data)
+{
+  switch (event->keyval)
+    {
+    case CLUTTER_Escape :
+      clutter_main_quit();
+      break;
+    }
+}
 
 
 gint
@@ -292,14 +317,18 @@ main (int   argc,
   ClutterActor *stage;
   ClutterColor  stage_color = { 0x00, 0x00, 0x00, 0x00 };
   gboolean hide_cursor = FALSE;
+  gboolean fullscreen = FALSE;
   int double_click_radius = 10, c;
 
   clutter_init (&argc, &argv);
-  while ((c = getopt (argc, argv, "hr:s:")) != -1)
+  while ((c = getopt (argc, argv, "fhr:")) != -1)
     switch (c)
       {
       case 'h':
         hide_cursor = TRUE;
+        break;
+      case 'f':
+        fullscreen = TRUE;
         break;
       case 'r':
         double_click_radius = atoi(optarg);
@@ -323,7 +352,10 @@ main (int   argc,
   stage = clutter_stage_get_default ();
   clutter_stage_set_color (CLUTTER_STAGE (stage), &stage_color);
 
-  clutter_actor_set_size (stage, 720, 576);
+  if (fullscreen)
+    clutter_stage_fullscreen (CLUTTER_STAGE(stage));
+  else
+    clutter_actor_set_size (stage, 720, 576);
 
   if (hide_cursor)
     clutter_stage_hide_cursor (CLUTTER_STAGE(stage));
@@ -357,6 +389,8 @@ main (int   argc,
   g_signal_connect (stage, "button-press-event",
                     G_CALLBACK (button_press), NULL);
 #endif
+  g_signal_connect (stage, "key-press-event",
+                    G_CALLBACK (stage_key_press_event_cb), NULL);
 
   clutter_main ();
 

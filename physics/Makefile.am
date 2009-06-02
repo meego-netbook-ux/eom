@@ -3,8 +3,6 @@ bin_PROGRAMS = pictable
 AM_CFLAGS = @DEPS_CFLAGS@
 AM_LDFLAGS = @DEPS_LIBS@ 
 
-EXTRA_DIST=redhand.png
-
 pictable_SOURCES = \
 	blockbox.h		\
 	actor-manipulator.c	\
