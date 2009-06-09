@@ -92,7 +92,7 @@ add_actor_to_cage (ClutterActor* actor, ClutterActor* group)
   int width, height;
   gint x, y;
   x = clutter_actor_get_width (clutter_stage_get_default ()) / 2;
-  y = clutter_actor_get_height (clutter_stage_get_default ()) * 0.8;
+  y = clutter_actor_get_height (clutter_stage_get_default ()) * 0.5;
   ClutterColor bg_color = { 0xff, 0xff, 0xff, 0xff };
 
   clutter_actor_get_size (actor, &width, &height);

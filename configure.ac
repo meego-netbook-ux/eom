@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script
 
-AC_INIT([eom], [0.2])
+AC_INIT([eom], [0.3])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_MACRO_DIR([shave])
 
