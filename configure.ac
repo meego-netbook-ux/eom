@@ -23,6 +23,14 @@ if test x$enable_gesture = xyes; then
     EOM_MODULES="$EOM_MODULES clutter-gesture"
 fi
 
+AC_ARG_ENABLE(no-motion,
+  AC_HELP_STRING([--enable-no-motion],
+                 [no motion event]),no_motion=yes,)
+
+if test x$no_motion = xyes; then
+    AC_DEFINE(HAVE_DISABLE_MOTION,1,[Build without motion support])
+fi
+
 AC_ARG_ENABLE(gamma,
     AC_HELP_STRING([--disable-gamma],
                    [disable gamma support]),,

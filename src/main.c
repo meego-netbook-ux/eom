@@ -511,6 +511,7 @@ static void
 stage_motion_event_cb (ClutterActor *actor, ClutterMotionEvent *event,
                        TidyViewport *viewport)
 {
+#ifndef HAVE_DISABLE_MOTION
   gint y, z;
 
   if (!pressed)
@@ -530,6 +531,7 @@ stage_motion_event_cb (ClutterActor *actor, ClutterMotionEvent *event,
       clutter_actor_set_position (single_pic, pressed_viewport_x + event->x - pressed_x,
                                   pressed_viewport_y + event->y - pressed_y);
     }
+#endif
 }
 
 static void
