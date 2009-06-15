@@ -67,13 +67,23 @@ gesture_pinch_cb (ClutterGesture    *gesture,
                   ClutterGesturePinchEvent *event,
                   gpointer         data)
 {
-  gdouble scale_x, scale_y;
   gdouble scale_x0, scale_y0, scale;
   ClutterUnit x_start_1, y_start_1, x_start_2, y_start_2, x_end_1, y_end_1, x_end_2, y_end_2;
+  ClutterUnit center_x, center_y;
 
   if (!is_in_single_view_mode())
     return FALSE;
 
+  x_start_1 = event->x_start_1;
+  y_start_1 = event->y_start_1;
+  x_start_2 = event->x_start_2;
+  y_start_2 = event->y_start_2;
+  x_end_1 = event->x_end_1;
+  y_end_1 = event->y_end_1;
+  x_end_2 = event->x_end_2;
+  y_end_2 = event->y_end_2;
+
+#if 0
   clutter_actor_transform_stage_point (single_pic,
                                        event->x_start_1, event->y_start_1,
                                        &x_start_1, &y_start_1);
@@ -89,25 +99,34 @@ gesture_pinch_cb (ClutterGesture    *gesture,
   clutter_actor_transform_stage_point (single_pic,
                                        event->x_end_2, event->y_end_2,
                                        &x_end_2, &y_end_2);
-
-  if (x_start_2 == x_start_1)
-    {
-      /* not devide by zero */
-      scale_x = 1;
-    }
-  else
-    scale_x = ((gdouble)x_end_2 - x_end_1) / (x_start_2 - x_start_1);
-
-  if (y_start_2 == y_start_1)
-    scale_y = 1;
-  else
-    scale_y = ((gdouble)y_end_2 - y_end_1) / (y_start_2 - y_start_1);
-
-  scale = (fabs(scale_x) + fabs(scale_y)) / 2;
+#endif
+  gdouble dist_start = hypot(((gdouble)x_start_2 - x_start_1),
+               ((gdouble)y_start_2 - y_start_1));
+  gdouble dist_end = hypot(((gdouble)x_end_2 - x_end_1),
+               ((gdouble)y_end_2 - y_end_1));
+  scale = dist_end / dist_start;
   clutter_actor_get_scale (single_pic, &scale_x0, &scale_y0);
+  /*printf ("----> scale_x = %lf, scale_y = %lf\n", scale_x, scale_y);*/
+  clutter_actor_transform_stage_point (single_pic,
+                                       (x_start_1 + x_start_2) / 2,
+                                       (y_start_1 + y_start_2) / 2,
+                                       &center_x, &center_y);
+
+  if (center_x < 0 || center_y < 0)
+    {
+      center_x = 0;
+      center_y = 0;
+    }
+  if (center_x > clutter_actor_get_width(single_pic)
+      || center_y > clutter_actor_get_height(single_pic))
+    {
+      center_x = clutter_actor_get_width(single_pic) - 1;
+      center_y = clutter_actor_get_height(single_pic) - 1;
+    }
+  printf ("----> scale = %lf (%lf,%lf)\n", scale, center_x, center_y);
+
   clutter_actor_set_scale_full (single_pic, scale * scale_x0, scale * scale_y0,
-                                (x_start_1 + x_start_2) / 2,
-                                (y_start_1 + y_start_2) / 2);
+                                center_x, center_y);
   return TRUE;
 }
 
