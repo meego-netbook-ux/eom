@@ -42,11 +42,11 @@ G_DEFINE_TYPE (TidyDepthGroup, tidy_depth_group, CLUTTER_TYPE_GROUP)
 static void
 tidy_depth_group_paint (ClutterActor *actor)
 {
-  cogl_enable_depth_test (TRUE);
+  cogl_set_depth_test_enabled (TRUE);
 
   CLUTTER_ACTOR_CLASS (tidy_depth_group_parent_class)->paint (actor);
 
-  cogl_enable_depth_test (FALSE);
+  cogl_set_depth_test_enabled (FALSE);
 }
 
 static void

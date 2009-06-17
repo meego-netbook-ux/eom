@@ -32,6 +32,8 @@
 #include <tidy/tidy-viewport.h>
 #include <tidy/tidy-depth-group.h>
 
+#define FPS 60
+
 #ifdef HAVE_GESTURE
 #include <clutter-gesture/clutter-gesture.h>
 #endif
@@ -45,11 +47,16 @@
 static ClutterTimeline *timeline;
 static gint start, target;
 static gboolean pressed = FALSE;
-static gint pressed_x, pressed_y, pressed_viewport_x, pressed_viewport_y, pressed_device;
+static gfloat pressed_x, pressed_y, pressed_viewport_x, pressed_viewport_y, pressed_device;
 static ClutterActor* pic_group, *single_pic, *current_actor, *single_view_bg, *g_viewport;
 static gint single_view_x0, single_view_y0;
 static GList* pic_actors;
 static gint total_pics;
+
+static gboolean do_rotation_timeline = FALSE;
+static ClutterTimeline* rotation_timeline;
+
+static int rotate_test_fps, rotate_test_angle_delta;
 
 static int g_speed = 30;
 
@@ -58,6 +65,20 @@ void single_view_navigate (gboolean next);
 gboolean is_in_single_view_mode();
 gboolean zoom_at_point (int x, int y, float scale);
 void slide_viewport (TidyViewport* viewport, gint old_target, gint new_target, gint frames);
+
+static void
+rotate_single_pic (int fps, int angle_delta)
+{
+  int total_time = 360 * 1000 / angle_delta / fps;
+  gfloat width, height;
+
+  clutter_actor_get_size (single_pic, &width, &height);
+  clutter_actor_set_rotation (single_pic, CLUTTER_Z_AXIS, 0,
+                              width / 2, height / 2, 0);
+  clutter_actor_animate (single_pic, CLUTTER_LINEAR, total_time,
+                         "rotation-angle-z", 359.9,
+                         NULL);
+}
 
 #ifdef HAVE_GESTURE
 static void start_rotate_viewport (TidyViewport* viewport, gboolean right);
@@ -68,8 +89,8 @@ gesture_pinch_cb (ClutterGesture    *gesture,
                   gpointer         data)
 {
   gdouble scale_x0, scale_y0, scale;
-  ClutterUnit x_start_1, y_start_1, x_start_2, y_start_2, x_end_1, y_end_1, x_end_2, y_end_2;
-  ClutterUnit center_x, center_y;
+  gfloat x_start_1, y_start_1, x_start_2, y_start_2, x_end_1, y_end_1, x_end_2, y_end_2;
+  gfloat center_x, center_y;
 
   if (!is_in_single_view_mode())
     return FALSE;
@@ -174,6 +195,13 @@ intersection (int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4,
   printf ("return angle = %d\n", *angle);
 }
 
+static void
+clear_rotation_timeline(ClutterTimeline *timeline,
+                        gpointer clone)
+{
+  rotation_timeline = NULL;
+}
+
 static gboolean
 gesture_rotate_cb (ClutterGesture    *gesture,
                    ClutterGestureRotateEvent    *event,
@@ -181,20 +209,37 @@ gesture_rotate_cb (ClutterGesture    *gesture,
 {
   int x0, y0;  /* rotation center */
   int angle0;
-  gdouble angle;
-  gint x, y, z;
+  gdouble angle, prev_angle;
+  gfloat x, y, z;
+  static ClutterAnimation* ani = NULL;
 
   intersection (event->x_start_1, event->y_start_1,
                 event->x_start_2, event->y_start_2,
                 event->x_end_1,   event->y_end_1,
                 event->x_end_2,   event->y_end_2,
                 &x0, &y0, &angle0);
-  angle = clutter_actor_get_rotation (single_pic, CLUTTER_Z_AXIS,
-                                      &x, &y, &z);
+  angle = prev_angle = clutter_actor_get_rotation (single_pic, CLUTTER_Z_AXIS,
+                                                   &x, &y, &z);
   angle -= angle0;
   printf ("---> setting actor rotation: %d\n", (int)angle);
-  clutter_actor_set_rotation (single_pic, CLUTTER_Z_AXIS, angle,
-                              x0, y0, z);
+  if (do_rotation_timeline)
+    {
+      if (rotation_timeline)
+        {
+          clutter_animation_completed (ani);
+        }
+      /* setting rotation center only */
+      clutter_actor_set_rotation (single_pic, CLUTTER_Z_AXIS, prev_angle,
+                                x0, y0, z);
+      ani = clutter_actor_animate (single_pic, CLUTTER_LINEAR, 60,
+                                       "rotation-angle-z", angle,
+                                       NULL);
+      rotation_timeline = clutter_animation_get_timeline (ani);
+      g_signal_connect (rotation_timeline, "completed", G_CALLBACK(clear_rotation_timeline), NULL);
+    }
+  else
+    clutter_actor_set_rotation (single_pic, CLUTTER_Z_AXIS, angle,
+                                x0, y0, z);
   return TRUE;
 }
 
@@ -223,7 +268,14 @@ gesture_slide_cb (ClutterGesture    *gesture,
           if (!is_in_single_view_mode())
             switch_to_single_view (CLUTTER_GROUP(pic_group));
           else
-            zoom_at_point (slide->x_start, slide->y_start, 0.8);
+            {
+              if (rotate_test_fps > 0)
+                {
+                  rotate_single_pic (rotate_test_fps, rotate_test_angle_delta);
+                }
+              else
+                zoom_at_point (slide->x_start, slide->y_start, 0.8);
+            }
           break;
         case SLIDE_LEFT:
         case SLIDE_RIGHT:
@@ -248,7 +300,7 @@ static void
 switch_single_pic_var(ClutterTimeline *timeline,
                       gpointer clone)
 {
-  gint x, y;
+  gfloat x, y;
 
   clutter_actor_destroy (single_pic);
   single_pic = (ClutterActor*)clone;
@@ -260,7 +312,7 @@ switch_single_pic_var(ClutterTimeline *timeline,
 static void
 view_pic (ClutterActor* actor, gboolean from_right)
 {
-  guint width, height;
+  gfloat width, height;
   gint new_view_x0, new_view_y0;
   ClutterActor* stage = clutter_stage_get_default();
 
@@ -326,7 +378,7 @@ zoom_at_point (int x, int y, float scale)
 {
   ClutterGeometry geo;
   gdouble scale_x, scale_y, angle;
-  gint x0, y0, z0;
+  gfloat x0, y0, z0;
 
   clutter_actor_get_geometry (single_pic, &geo);
   clutter_actor_get_scale (single_pic, &scale_x, &scale_y);
@@ -386,7 +438,7 @@ void
 switch_to_single_view (ClutterGroup* group)
 {
   ClutterActor *actor;
-  guint width, height;
+  gfloat width, height;
   /* gint x, i; */
   /* ClutterActor* viewport = clutter_actor_get_parent (group); */
   /* tidy_viewport_get_origin (TIDY_VIEWPORT (viewport), &x, NULL, NULL); */
@@ -398,7 +450,8 @@ switch_to_single_view (ClutterGroup* group)
   /* actor = (ClutterActor *)c->data; */
   ClutterActor* stage = clutter_stage_get_default();
   clutter_actor_get_size (stage, &width, &height);
-  actor = clutter_stage_get_actor_at_pos(CLUTTER_STAGE(stage), width / 2, height / 2);
+  actor = clutter_stage_get_actor_at_pos(CLUTTER_STAGE(stage), CLUTTER_PICK_ALL,
+                                         width / 2, height / 2);
 
   ClutterColor bg_color = { 0x34, 0x39, 0x39, 0xff };
   ClutterActor* bg = clutter_rectangle_new_with_color (&bg_color);
@@ -444,22 +497,22 @@ slide_viewport (TidyViewport* viewport, gint old_target, gint new_target, gint f
     {
       clutter_timeline_stop (timeline);
       if (frames > 0)
-        clutter_timeline_set_n_frames (timeline, frames);
+        clutter_timeline_set_duration (timeline, frames * 1000 / FPS);
       else if (ABS (new_target - start) > ABS (old_target - start))
-        clutter_timeline_set_n_frames (timeline,
-                                       (FRAMES -clutter_timeline_get_current_frame (timeline)) + FRAMES / 2);
+        clutter_timeline_set_duration (timeline,
+                                       ((FRAMES -clutter_timeline_get_elapsed_time (timeline) * FPS / 1000) + FRAMES / 2) * 1000 / FPS);
       else
-        clutter_timeline_set_n_frames (timeline,
-                                       FRAMES - MAX (1,clutter_timeline_get_current_frame (timeline) - FRAMES / 2));
+        clutter_timeline_set_duration (timeline,
+                                       (FRAMES - MAX (1,clutter_timeline_get_elapsed_time (timeline) * FPS / 1000 - FRAMES / 2)) * 1000 / FPS);
       clutter_timeline_rewind (timeline);
       clutter_timeline_start (timeline);
     }
   else
     {
       if (frames > 0)
-        clutter_timeline_set_n_frames (timeline, frames);
+        clutter_timeline_set_duration (timeline, frames * 1000 / FPS);
       else
-        clutter_timeline_set_n_frames (timeline, FRAMES);
+        clutter_timeline_set_duration (timeline, FRAMES * 1000 / FPS);
       clutter_timeline_rewind (timeline);
       clutter_timeline_start (timeline);
     }
@@ -469,14 +522,18 @@ static void
 stage_button_press_event_cb (ClutterActor *actor, ClutterButtonEvent *event,
                              TidyViewport *viewport)
 {
+  int value;
   pressed = TRUE;
   pressed_x = event->x;
   pressed_y = event->y;
-  pressed_device = clutter_event_get_device_id (event);
+  pressed_device = clutter_event_get_device_id ((ClutterEvent*)event);
   if (!is_in_single_view_mode())
     {
       if (event->click_count == 1)
-        tidy_viewport_get_origin (TIDY_VIEWPORT (viewport), &pressed_viewport_x, NULL, NULL);
+        {
+          tidy_viewport_get_origin (TIDY_VIEWPORT (viewport), &value, NULL, NULL);
+          pressed_viewport_x = value;
+        }
       if (clutter_timeline_is_playing (timeline))
         stop_viewport (TIDY_VIEWPORT(viewport), TRUE);
     }
@@ -536,7 +593,7 @@ stage_motion_event_cb (ClutterActor *actor, ClutterMotionEvent *event,
   if (!pressed)
     return;
   /* MPX support, check if we're moving the same pointer */
-  if (pressed_device != clutter_event_get_device_id (event))
+  if (pressed_device != clutter_event_get_device_id ((ClutterEvent*)event))
     return;
 
   if (!is_in_single_view_mode())
@@ -547,8 +604,10 @@ stage_motion_event_cb (ClutterActor *actor, ClutterMotionEvent *event,
     }
   else
     {
+#ifndef DISABLE_MOTION_SV
       clutter_actor_set_position (single_pic, pressed_viewport_x + event->x - pressed_x,
                                   pressed_viewport_y + event->y - pressed_y);
+#endif
     }
 #endif
 }
@@ -623,7 +682,8 @@ viewport_x_origin_notify_cb (TidyViewport *viewport,
                              ClutterActor *group)
 {
   GList *children, *c;
-  gint origin_x, width;
+  gfloat width;
+  int origin_x;
 
   tidy_viewport_get_origin (viewport, &origin_x, NULL, NULL);
   clutter_actor_get_clip (CLUTTER_ACTOR (viewport),
@@ -804,9 +864,18 @@ main (int argc, char **argv)
   gboolean pinch_only = FALSE, rotate_only = FALSE;
   int double_click_radius = 10, c, sample_freq = 120;
 
-  while ((c = getopt (argc, argv, "pofhr:s:e:")) != -1)
+  while ((c = getopt (argc, argv, "tpofhr:s:e:d:a:")) != -1)
     switch (c)
       {
+      case 'd':
+        rotate_test_fps = atoi (optarg);
+        break;
+      case 'a':
+        rotate_test_angle_delta = atoi (optarg);
+        break;
+      case 't':
+        do_rotation_timeline = TRUE;
+        break;
       case 'p':
         pinch_only = TRUE;
         break;
@@ -853,8 +922,6 @@ main (int argc, char **argv)
 
   clutter_init (&argc, &argv);
 
-  clutter_set_motion_events_frequency(120);
-
   stage = clutter_stage_get_default ();
 
   if (hide_cursor)
@@ -874,8 +941,7 @@ main (int argc, char **argv)
   clutter_stage_set_color (CLUTTER_STAGE (stage), &stage_color);
   //  clutter_stage_set_use_fog (CLUTTER_STAGE (stage), TRUE);
   //clutter_actor_set_size (stage, 1280, 800);
-  if (fullscreen)
-    clutter_stage_fullscreen (CLUTTER_STAGE(stage));
+  clutter_stage_set_fullscreen (CLUTTER_STAGE(stage), fullscreen);
   viewport = tidy_viewport_new ();
   g_viewport = viewport;
 
@@ -898,7 +964,7 @@ main (int argc, char **argv)
 
   tidy_viewport_set_origin (TIDY_VIEWPORT (viewport), RECT_W / 2, 0, 0);
   target = RECT_W / 2;
-  timeline = clutter_timeline_new (FRAMES, 60);
+  timeline = clutter_timeline_new (FRAMES * 1000 / FPS);
   g_signal_connect (timeline, "new_frame",
                     G_CALLBACK (new_frame_cb), viewport);
 

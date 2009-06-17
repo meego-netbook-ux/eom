@@ -10,8 +10,9 @@ AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_LIBTOOL
 
-EOM_MODULES='clutter-0.9 glib-2.0 gio-2.0 clutter-box2d-0.9 clutter-gst-0.9'
+EOM_MODULES='clutter-0.9 glib-2.0 gio-2.0'
 EOM_SAMPLE_DIR="`pwd`/images"
+PICTABLE_MODULES="$EOM_MODULES clutter-box2d-0.9 clutter-gst-0.9"
 
 AC_ARG_ENABLE(gesture,
   AC_HELP_STRING([--disable-gesture],
@@ -21,6 +22,7 @@ AC_ARG_ENABLE(gesture,
 if test x$enable_gesture = xyes; then
     AC_DEFINE(HAVE_GESTURE,1,[Build with gesture support])
     EOM_MODULES="$EOM_MODULES clutter-gesture"
+    PICTABLE_MODULES="$PICTABLE_MODULES clutter-gesture"
 fi
 
 AC_ARG_ENABLE(no-motion,
@@ -45,6 +47,10 @@ AC_DEFINE_UNQUOTED(EOM_SAMPLE_DIR, "$EOM_SAMPLE_DIR", [sample image dir])
 PKG_CHECK_MODULES(DEPS, $EOM_MODULES)
 AC_SUBST(DEPS_CFLAGS)
 AC_SUBST(DEPS_LIBS)
+
+PKG_CHECK_MODULES(PTDEP, $EOM_MODULES)
+AC_SUBST(PTDEP_CFLAGS)
+AC_SUBST(PTDEP_LIBS)
 
 SHAVE_INIT([shave], [enable])
 

@@ -771,7 +771,7 @@ tidy_adjustment_interpolatex (TidyAdjustment *adjustment,
   
   priv->dx = COGL_FIXED_DIV (priv->new_position - priv->old_position,
                             COGL_FIXED_FROM_INT (n_frames));
-  priv->interpolation = clutter_timeline_new (n_frames, fps);
+  priv->interpolation = clutter_timeline_new (n_frames * 1000 / fps);
   
   if (priv->elastic)
     priv->bounce_alpha = clutter_alpha_new_full (priv->interpolation,
