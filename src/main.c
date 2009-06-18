@@ -49,7 +49,7 @@ static gint start, target;
 static gboolean pressed = FALSE;
 static gfloat pressed_x, pressed_y, pressed_viewport_x, pressed_viewport_y, pressed_device;
 static ClutterActor* pic_group, *single_pic, *current_actor, *single_view_bg, *g_viewport;
-static gint single_view_x0, single_view_y0;
+static gfloat single_view_x0, single_view_y0;
 static GList* pic_actors;
 static gint total_pics;
 
@@ -313,14 +313,14 @@ static void
 view_pic (ClutterActor* actor, gboolean from_right)
 {
   gfloat width, height;
-  gint new_view_x0, new_view_y0;
+  gfloat new_view_x0, new_view_y0;
   ClutterActor* stage = clutter_stage_get_default();
 
   clutter_actor_get_size (actor, &width, &height);
   ClutterActor* clone = clutter_clone_new (actor);
 
-  gint disp_height = height * CLUTTER_STAGE_WIDTH() / width;
-  gint disp_width = width * CLUTTER_STAGE_HEIGHT() / height;
+  gfloat disp_height = height * CLUTTER_STAGE_WIDTH() / width;
+  gfloat disp_width = width * CLUTTER_STAGE_HEIGHT() / height;
 
   if (disp_height > CLUTTER_STAGE_HEIGHT())
     {
@@ -397,8 +397,8 @@ zoom_at_point (int x, int y, float scale)
     }
   else
     {
-      int newx = geo.x - ( x - CLUTTER_STAGE_WIDTH() / 2 );
-      int newy = geo.y - ( y - CLUTTER_STAGE_HEIGHT() / 2 );
+      gfloat newx = geo.x - ( x - CLUTTER_STAGE_WIDTH() / 2 );
+      gfloat newy = geo.y - ( y - CLUTTER_STAGE_HEIGHT() / 2 );
       clutter_actor_animate (single_pic,
                              CLUTTER_LINEAR, 500,
                              "x", newx > 0 ? 0 : newx,
@@ -794,7 +794,7 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
             {
               gint width, height;
               clutter_texture_get_base_size (CLUTTER_TEXTURE(actor), &width, &height);
-              gint disp_height = height * RECT_W / width;
+              gfloat disp_height = height * RECT_W / width;
               clutter_container_add_actor (CLUTTER_CONTAINER (group), actor);
 
               clutter_actor_set_size (actor, RECT_W, disp_height);
