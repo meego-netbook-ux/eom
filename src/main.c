@@ -83,6 +83,7 @@ rotate_single_pic (int fps, int angle_delta)
 #ifdef HAVE_GESTURE
 static void start_rotate_viewport (TidyViewport* viewport, gboolean right);
 
+#if 0
 static gboolean
 gesture_pinch_cb (ClutterGesture    *gesture,
                   ClutterGesturePinchEvent *event,
@@ -151,6 +152,8 @@ gesture_pinch_cb (ClutterGesture    *gesture,
   return TRUE;
 }
 
+#endif
+
 static void
 intersection (int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4,
               int* x0, int* y0, int* angle)
@@ -202,6 +205,7 @@ clear_rotation_timeline(ClutterTimeline *timeline,
   rotation_timeline = NULL;
 }
 
+#if 0
 static gboolean
 gesture_rotate_cb (ClutterGesture    *gesture,
                    ClutterGestureRotateEvent    *event,
@@ -243,6 +247,7 @@ gesture_rotate_cb (ClutterGesture    *gesture,
   return TRUE;
 }
 
+#endif
 
 static gboolean
 gesture_slide_cb (ClutterGesture    *gesture,
@@ -984,15 +989,19 @@ main (int argc, char **argv)
 
   gesture = clutter_gesture_new(CLUTTER_ACTOR(stage));
   clutter_gesture_set_gesture_mask(gesture, stage,
-                                   GESTURE_MASK_SLIDE | GESTURE_MASK_PINCH | GESTURE_MASK_ROTATE );
+                                   GESTURE_MASK_SLIDE);
   g_signal_connect (gesture, "gesture-slide-event",
                     G_CALLBACK (gesture_slide_cb), (gpointer)0x11223344);
+
+#if 0
   if (!rotate_only)
     g_signal_connect (gesture, "gesture-pinch-event",
                       G_CALLBACK (gesture_pinch_cb), (gpointer)0x11223344);
   if (!pinch_only)
     g_signal_connect (gesture, "gesture-rotate-event",
                       G_CALLBACK (gesture_rotate_cb), (gpointer)0x11223344);
+#endif
+
 #endif
   clutter_main ();
 
