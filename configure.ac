@@ -60,7 +60,6 @@ AC_CONFIG_FILES([
     Makefile
     src/Makefile
     tidy/Makefile
-    physics/Makefile
 ])
 
 dnl End the configure script.
