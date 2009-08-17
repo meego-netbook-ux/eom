@@ -145,8 +145,9 @@ gesture_pinch_cb (ClutterGesture    *gesture,
       center_x = clutter_actor_get_width(single_pic) - 1;
       center_y = clutter_actor_get_height(single_pic) - 1;
     }
+#ifdef HAVE_DEBUG
   printf ("----> scale = %lf (%lf,%lf)\n", scale, center_x, center_y);
-
+#endif
   clutter_actor_set_scale_full (single_pic, scale * scale_x0, scale * scale_y0,
                                 center_x, center_y);
   return TRUE;
@@ -186,7 +187,9 @@ intersection (int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4,
   if (angle2 < 0)
     angle2 += 360;
 
+#ifdef HAVE_DEBUG
   printf ("angle1 = %d, angle2 = %d\n", angle1, angle2);
+#endif
   if (abs(angle1 - angle2) > 180)
     {
       *angle = 360 - abs(angle1 - angle2);
@@ -195,7 +198,9 @@ intersection (int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4,
     }
   else
     *angle = angle1 - angle2; /* clockwise */
+#ifdef HAVE_DEBUG
   printf ("return angle = %d\n", *angle);
+#endif
 }
 
 static void
@@ -225,7 +230,9 @@ gesture_rotate_cb (ClutterGesture    *gesture,
   angle = prev_angle = clutter_actor_get_rotation (single_pic, CLUTTER_Z_AXIS,
                                                    &x, &y, &z);
   angle -= angle0;
+#ifdef HAVE_DEBUG
   printf ("---> setting actor rotation: %d\n", (int)angle);
+#endif
   if (do_rotation_timeline)
     {
       if (rotation_timeline)
@@ -261,12 +268,15 @@ gesture_slide_cb (ClutterGesture    *gesture,
     "dummy",
     "SLIDE_UP", "SLIDE_DOWN", "SLIDE_LEFT", "SLIDE_RIGHT"};
 
-
+#ifdef HAVE_DEBUG
   printf("gesture_cb: event pointer %p\n", event);
+#endif
   if (event && event->type == GESTURE_SLIDE)
     {
       ClutterGestureSlideEvent *slide = (ClutterGestureSlideEvent *)event;
+#ifdef HAVE_DEBUG
       printf("slide direction :%s\n", slide_dir_name[slide->direction]);
+#endif
       switch (slide->direction)
         {
         case SLIDE_DOWN:
@@ -794,7 +804,9 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
         {
           GFile* file = g_file_get_child (root, name);
           const char* path = g_file_get_path (file);
+#ifdef HAVE_DEBUG
           printf("adding %s (%s) ... ", name, mime_type);
+#endif
           if ((actor = clutter_texture_new_from_file(path, NULL)))
             {
               gint width, height;
@@ -811,10 +823,16 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
               new_black_actor(actor, group);
 #endif
               i++;
+#ifdef HAVE_DEBUG
               printf ("\n");
+#endif
             }
           else
-            printf ("failed\n");
+            {
+#ifdef HAVE_DEBUG
+              printf ("failed\n");
+#endif
+            }
           g_free ((gpointer)path);
           g_object_unref (file);
        }

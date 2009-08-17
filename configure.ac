@@ -14,10 +14,24 @@ EOM_MODULES='clutter-1.0 glib-2.0 gio-2.0'
 EOM_SAMPLE_DIR="`pwd`/images"
 PICTABLE_MODULES="$EOM_MODULES clutter-box2d-0.9 clutter-gst-0.9"
 
+AC_ARG_ENABLE([debug],
+              AS_HELP_STRING([--enable-debug], [enable debug]),
+              [enable_debug=$enableval],
+              [enable_debug=no])
+
 AC_ARG_ENABLE(gesture,
   AC_HELP_STRING([--disable-gesture],
                  [disable gesture support]),,
   enable_gesture=yes)
+
+AC_ARG_ENABLE(no-motion,
+  AC_HELP_STRING([--enable-no-motion],
+                 [no motion event]),no_motion=yes,)
+
+AC_ARG_ENABLE(gamma,
+    AC_HELP_STRING([--disable-gamma],
+                   [disable gamma support]),,
+    enable_gamma=yes)
 
 if test x$enable_gesture = xyes; then
     AC_DEFINE(HAVE_GESTURE,1,[Build with gesture support])
@@ -25,21 +39,19 @@ if test x$enable_gesture = xyes; then
     PICTABLE_MODULES="$PICTABLE_MODULES clutter-gesture"
 fi
 
-AC_ARG_ENABLE(no-motion,
-  AC_HELP_STRING([--enable-no-motion],
-                 [no motion event]),no_motion=yes,)
+if test x$enable_gamma = xyes; then
+    AC_DEFINE(HAVE_GAMMA,1,[Build with gamma support])
+fi
 
 if test x$no_motion = xyes; then
     AC_DEFINE(HAVE_DISABLE_MOTION,1,[Build without motion support])
 fi
 
-AC_ARG_ENABLE(gamma,
-    AC_HELP_STRING([--disable-gamma],
-                   [disable gamma support]),,
-    enable_gamma=yes)
-
-if test x$enable_gamma = xyes; then
-    AC_DEFINE(HAVE_GAMMA,1,[Build with gamma support])
+if test x$enable_debug = xyes; then
+  AC_DEFINE(HAVE_DEBUG,1,[Build with debug support])
+  DEFAULT_COMPILE_FLAGS="-g -O0 -Wall"
+else
+  DEFAULT_COMPILE_FLAGS=""
 fi
 
 AC_DEFINE_UNQUOTED(EOM_SAMPLE_DIR, "$EOM_SAMPLE_DIR", [sample image dir])
@@ -51,6 +63,8 @@ AC_SUBST(DEPS_LIBS)
 PKG_CHECK_MODULES(PTDEP, $EOM_MODULES)
 AC_SUBST(PTDEP_CFLAGS)
 AC_SUBST(PTDEP_LIBS)
+
+AC_SUBST(DEFAULT_COMPILE_FLAGS)
 
 SHAVE_INIT([shave], [enable])
 

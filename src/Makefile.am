@@ -1,5 +1,5 @@
 bin_PROGRAMS=eom
-AM_CFLAGS = $(DEPS_CFLAGS) -Wall -I.. 
+eom_CFLAGS = $(DEPS_CFLAGS) $(DEFAULT_COMPILE_FLAGS) -I.. 
 
 eom_SOURCES=main.c
 eom_LDADD=$(DEPS_LIBS) -L../tidy -ltidy 
