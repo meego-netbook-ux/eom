@@ -12,7 +12,7 @@ AC_PROG_LIBTOOL
 
 EOM_MODULES='clutter-1.0 glib-2.0 gio-2.0'
 EOM_SAMPLE_DIR="`pwd`/images"
-PICTABLE_MODULES="$EOM_MODULES clutter-box2d-0.9 clutter-gst-0.9"
+PICTABLE_MODULES="$EOM_MODULES clutter-box2d-0.10 clutter-gst-0.10"
 
 AC_ARG_ENABLE([debug],
               AS_HELP_STRING([--enable-debug], [enable debug]),
