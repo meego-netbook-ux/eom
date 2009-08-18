@@ -947,6 +947,10 @@ main (int argc, char **argv)
 
   stage = clutter_stage_get_default ();
 
+  clutter_stage_set_throttle_motion_events(CLUTTER_STAGE(stage), FALSE);
+
+  clutter_set_default_frame_rate(60);
+
   if (hide_cursor)
     clutter_stage_hide_cursor (CLUTTER_STAGE(stage));
 
