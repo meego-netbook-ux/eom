@@ -895,7 +895,7 @@ main (int argc, char **argv)
   gboolean pinch_only = FALSE, rotate_only = FALSE;
   int double_click_radius = 10, c, sample_freq = 120;
 
-  while ((c = getopt (argc, argv, "tpofhr:s:e:d:a:")) != -1)
+  while ((c = getopt (argc, argv, "btpofhr:s:e:d:a:")) != -1)
     switch (c)
       {
       case 'd':
