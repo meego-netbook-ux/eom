@@ -46,6 +46,8 @@ main (int argc, char **argv)
 {
   ClutterColor stage_color = { 0x34, 0x39, 0x39, 0xff };
   ClutterColor test_block_color = { 0x7f, 0xae, 0xff, 0xff };
+  ClutterActor* clone;
+
   clutter_init (&argc, &argv);
 
   ClutterActor* stage = clutter_stage_get_default ();
@@ -53,7 +55,12 @@ main (int argc, char **argv)
   clutter_stage_set_fullscreen (CLUTTER_STAGE(stage), TRUE);
   clutter_actor_show_all (stage);
 
-  ClutterActor* clone = clutter_rectangle_new_with_color (&test_block_color);
+  if (argc > 1 && (clone = clutter_texture_new_from_file(argv[1], NULL)) != NULL)
+    {
+    }
+  else
+    clone = clutter_rectangle_new_with_color (&test_block_color);
+
   single_pic = clone;
 
   int height = 700, width = 1000;
