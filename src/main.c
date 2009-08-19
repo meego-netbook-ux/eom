@@ -54,6 +54,7 @@ static GList* pic_actors;
 static gint total_pics;
 
 static gboolean do_rotation_timeline = FALSE;
+static gboolean test_mode = FALSE;
 static ClutterTimeline* rotation_timeline;
 
 static int rotate_test_fps, rotate_test_angle_delta;
@@ -329,10 +330,17 @@ view_pic (ClutterActor* actor, gboolean from_right)
 {
   gfloat width, height;
   gfloat new_view_x0, new_view_y0;
+  ClutterColor test_block_color = { 0x7f, 0xae, 0xff, 0xff };
+
   ClutterActor* stage = clutter_stage_get_default();
 
   clutter_actor_get_size (actor, &width, &height);
-  ClutterActor* clone = clutter_clone_new (actor);
+  ClutterActor* clone;
+
+  if (test_mode)
+    clone = clutter_rectangle_new_with_color (&test_block_color);
+  else
+    clone = clutter_clone_new (actor);
 
   gfloat disp_height = height * CLUTTER_STAGE_WIDTH() / width;
   gfloat disp_width = width * CLUTTER_STAGE_HEIGHT() / height;
@@ -895,6 +903,9 @@ main (int argc, char **argv)
         break;
       case 'a':
         rotate_test_angle_delta = atoi (optarg);
+        break;
+      case 'b':
+        test_mode = TRUE;
         break;
       case 't':
         do_rotation_timeline = TRUE;
