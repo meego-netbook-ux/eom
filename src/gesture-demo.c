@@ -6,6 +6,10 @@
 #include <clutter/clutter.h>
 #include <clutter/x11/clutter-x11.h>
 
+#ifdef HAVE_GESTURE
+#include <clutter-gesture/clutter-gesture.h>
+#endif
+
 ClutterActor* single_pic;
 gboolean pressed = FALSE;
 
@@ -43,67 +47,64 @@ stage_motion_event_cb (ClutterActor *actor, ClutterMotionEvent *event,
                               pressed_viewport_y + event->y - pressed_y);
 }
 
-static gint total_pics;
-static GList* pic_actors;
+#ifdef HAVE_GESTURE
 
 static void
-add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
+first_half_completed (ClutterTimeline *timeline,
+                      gpointer data)
 {
-  GFileEnumerator *file_enumerator;
-  GFile* root = g_file_new_for_path (img_folder);
-  const char *mime_type, *name;
-  ClutterActor* actor;
-  int i = 0;
-  total_pics = 0;
-  file_enumerator = g_file_enumerate_children (root,
-                                               G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE ","
-                                               G_FILE_ATTRIBUTE_STANDARD_NAME,
-                                               0, NULL, NULL);
-  GFileInfo* file_info = g_file_enumerator_next_file (file_enumerator, NULL, NULL);
+  ClutterGeometry geo;
+  gint dest_x = (gint)data;
+  gint cur_x;
 
-  while (file_info != NULL)
-    {
-      mime_type = g_file_info_get_content_type (file_info);
-      name = g_file_info_get_name (file_info);
+  clutter_actor_get_geometry (single_pic, &geo);
+  cur_x = geo.x < 0 ? CLUTTER_STAGE_WIDTH () : -geo.x;
 
-      if (strstr(mime_type, "image/") == mime_type)
-        {
-          GFile* file = g_file_get_child (root, name);
-          const char* path = g_file_get_path (file);
-#ifdef HAVE_DEBUG
-          printf("adding %s (%s) ... ", name, mime_type);
-#endif
-          if ((actor = clutter_texture_new_from_file(path, NULL)))
-            {
-              clutter_container_add_actor (CLUTTER_CONTAINER (stage), actor);
-              clutter_actor_hide (actor);
+  clutter_actor_set_position (single_pic, cur_x, geo.y);
 
-
-              pic_actors = g_list_append (pic_actors, actor);
-
-              i++;
-#ifdef HAVE_DEBUG
-              printf ("\n");
-#endif
-            }
-          else
-            {
-#ifdef HAVE_DEBUG
-              printf ("failed\n");
-#endif
-            }
-          g_free ((gpointer)path);
-          g_object_unref (file);
-       }
-      g_object_unref (file_info);
-      file_info = g_file_enumerator_next_file (file_enumerator, NULL, NULL);
-    }
-  g_file_enumerator_close (file_enumerator, NULL, NULL);
-  g_object_unref (file_enumerator);
-  g_object_unref (root);
-  total_pics = i;
+  clutter_actor_animate (single_pic, CLUTTER_LINEAR,
+                         abs (cur_x - dest_x),
+                         "x", (gfloat)dest_x,
+                         NULL);
 }
 
+static gboolean
+gesture_slide_cb (ClutterGesture    *gesture,
+                  ClutterGestureEvent    *event,
+                  gpointer         data)
+{
+  ClutterGeometry geo;
+  gint dest_x;
+
+  if (event && event->type == GESTURE_SLIDE)
+    {
+      ClutterGestureSlideEvent *slide = (ClutterGestureSlideEvent *)event;
+
+      clutter_actor_get_geometry (single_pic, &geo);
+      switch (slide->direction)
+        {
+        case SLIDE_LEFT:
+          dest_x = - geo.width;
+          break;
+        case SLIDE_RIGHT:
+          dest_x = CLUTTER_STAGE_WIDTH ();
+          break;
+        default:
+          return FALSE;
+        }
+      ClutterAnimation* ani = clutter_actor_animate (single_pic, CLUTTER_LINEAR,
+                                                     abs (geo.x - dest_x),
+                                                     "x", (gfloat)dest_x,
+                                                     NULL);
+      ClutterTimeline* tml = clutter_animation_get_timeline (ani);
+      g_signal_connect (tml, "completed", G_CALLBACK(first_half_completed),
+                        geo.x);
+      return TRUE;
+    }
+  return FALSE;
+}
+
+#endif
 
 int
 main (int argc, char **argv)
@@ -145,7 +146,17 @@ main (int argc, char **argv)
   g_signal_connect (stage, "motion-event",
                     G_CALLBACK (stage_motion_event_cb), NULL);
 
+#ifdef HAVE_GESTURE
+  ClutterGesture *gesture;
+
+  gesture = clutter_gesture_new(CLUTTER_ACTOR(stage));
+  clutter_gesture_set_gesture_mask(gesture, stage,
+                                   GESTURE_MASK_SLIDE);
+  g_signal_connect (gesture, "gesture-slide-event",
+                    G_CALLBACK (gesture_slide_cb), (gpointer)0x11223344);
+
   clutter_main ();
+#endif
 
   return 0;
 }

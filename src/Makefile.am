@@ -1,9 +1,9 @@
-bin_PROGRAMS=eom test
+bin_PROGRAMS=eom gesture-demo
 eom_CFLAGS = $(DEPS_CFLAGS) $(DEFAULT_COMPILE_FLAGS) -I.. 
 
-test_CFLAGS = $(DEPS_CFLAGS) $(DEFAULT_COMPILE_FLAGS) -I.. 
-test_LDADD = $(DEPS_LIBS)
-test_SOURCES=test.c
+gesture_demo_CFLAGS = $(DEPS_CFLAGS) $(DEFAULT_COMPILE_FLAGS) -I.. 
+gesture_demo_LDADD = $(DEPS_LIBS)
+gesture_demo_SOURCES=gesture-demo.c
 
 eom_SOURCES=main.c
 eom_LDADD=$(DEPS_LIBS) -L../tidy -ltidy 
