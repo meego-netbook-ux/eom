@@ -54,10 +54,12 @@ first_half_completed (ClutterTimeline *timeline,
                       gpointer data)
 {
   ClutterGeometry geo;
-  gint dest_x = (gint)data;
+  gint dest_x;
   gint cur_x;
 
   clutter_actor_get_geometry (single_pic, &geo);
+  dest_x = ( CLUTTER_STAGE_WIDTH () - geo.width ) / 2;
+
   cur_x = geo.x < 0 ? CLUTTER_STAGE_WIDTH () : -geo.x;
 
   clutter_actor_set_position (single_pic, cur_x, geo.y);
@@ -130,7 +132,7 @@ main (int argc, char **argv)
 
   int height = 700, width = 1000;
 
-  clutter_actor_set_size (clone, width, height);
+  /* clutter_actor_set_size (clone, width, height); */
   clutter_container_add_actor (CLUTTER_CONTAINER (stage), clone);
 
   clutter_actor_show (clone);
