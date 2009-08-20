@@ -122,10 +122,6 @@ main (int argc, char **argv)
 
   if (argc > 1 && (clone = clutter_texture_new_from_file(argv[1], NULL)) != NULL)
     {
-      if (argc > 2)
-        {
-          add_pics (stage, NULL, argv[2]);
-        }
     }
   else
     clone = clutter_rectangle_new_with_color (&test_block_color);
