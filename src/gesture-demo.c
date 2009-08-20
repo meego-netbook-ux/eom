@@ -8,11 +8,12 @@
 
 #ifdef HAVE_GESTURE
 #include <clutter-gesture/clutter-gesture.h>
+
+gboolean in_gesture_animation = FALSE;
 #endif
 
 ClutterActor* single_pic;
 gboolean pressed = FALSE;
-gboolean in_gesture_animation = FALSE;
 
 static gfloat pressed_x, pressed_y, pressed_viewport_x, pressed_viewport_y, pressed_device;
 
@@ -178,9 +179,9 @@ main (int argc, char **argv)
                                    GESTURE_MASK_SLIDE);
   g_signal_connect (gesture, "gesture-slide-event",
                     G_CALLBACK (gesture_slide_cb), (gpointer)0x11223344);
+#endif
 
   clutter_main ();
-#endif
 
   return 0;
 }
