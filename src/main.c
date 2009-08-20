@@ -281,6 +281,7 @@ gesture_slide_cb (ClutterGesture    *gesture,
       switch (slide->direction)
         {
         case SLIDE_DOWN:
+#if 0
           if (!is_in_single_view_mode())
             switch_to_single_view (CLUTTER_GROUP(pic_group));
           else
@@ -292,6 +293,7 @@ gesture_slide_cb (ClutterGesture    *gesture,
               else
                 zoom_at_point (slide->x_start, slide->y_start, 0.8);
             }
+#endif
           break;
         case SLIDE_LEFT:
         case SLIDE_RIGHT:
@@ -301,8 +303,10 @@ gesture_slide_cb (ClutterGesture    *gesture,
             start_rotate_viewport (TIDY_VIEWPORT(g_viewport), slide->direction == SLIDE_LEFT);
           break;
         case SLIDE_UP:
+#if 0
           if (is_in_single_view_mode())
             zoom_at_point (slide->x_start, slide->y_start, 1.0/0.8);
+#endif
           break;
       }
     }
