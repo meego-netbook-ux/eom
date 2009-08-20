@@ -456,7 +456,7 @@ exit_single_view()
   clutter_actor_destroy (single_pic);
   clutter_actor_destroy (single_view_bg);
 
-  clutter_container_add_actor (CLUTTER_CONTAINER (stage), g_viewport);
+  clutter_actor_show (g_viewport);
 
   single_pic = NULL;
 }
@@ -484,7 +484,7 @@ switch_to_single_view (ClutterGroup* group)
   ClutterActor* bg = clutter_rectangle_new_with_color (&bg_color);
   clutter_actor_set_size (bg, CLUTTER_STAGE_WIDTH(), CLUTTER_STAGE_HEIGHT());
 
-  clutter_container_remove_actor (CLUTTER_CONTAINER (stage), g_viewport);
+  clutter_actor_hide (g_viewport);
 
   clutter_container_add_actor (CLUTTER_CONTAINER (stage), bg);
   clutter_actor_show (bg);
