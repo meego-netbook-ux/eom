@@ -12,11 +12,12 @@
 
 ClutterActor* single_pic;
 gboolean pressed = FALSE;
+gboolean in_gesture_animation = FALSE;
 
 static gfloat pressed_x, pressed_y, pressed_viewport_x, pressed_viewport_y, pressed_device;
 
 
-static void
+static gboolean
 stage_button_press_event_cb (ClutterActor *actor, ClutterButtonEvent *event,
                              gpointer data)
 {
@@ -26,28 +27,47 @@ stage_button_press_event_cb (ClutterActor *actor, ClutterButtonEvent *event,
 
   clutter_actor_get_position (single_pic, &pressed_viewport_x, &pressed_viewport_y);
 
+  return TRUE;
+
 }
 
 
-static void
+static gboolean
 stage_button_release_event_cb (ClutterActor *actor, ClutterButtonEvent *event,
                                gpointer data)
 {
   pressed = FALSE;
+
+  return TRUE;
 }
 
-static void
+static gboolean
 stage_motion_event_cb (ClutterActor *actor, ClutterMotionEvent *event,
                        gpointer data)
 {
   if (!pressed)
-    return;
+    return FALSE;
 
-  clutter_actor_set_position (single_pic, pressed_viewport_x + event->x - pressed_x,
-                              pressed_viewport_y + event->y - pressed_y);
+  ClutterGeometry geo;
+  clutter_actor_get_geometry (single_pic, &geo);
+
+  gfloat new_x = pressed_viewport_x + event->x - pressed_x;
+  gfloat new_y = pressed_viewport_y + event->y - pressed_y;
+
+  clutter_actor_set_position (single_pic, new_x, new_y);
+
+  return TRUE;
 }
 
 #ifdef HAVE_GESTURE
+
+static void
+second_half_completed (ClutterTimeline *timeline,
+                       gpointer data)
+{
+  in_gesture_animation = FALSE;
+}
+
 
 static void
 first_half_completed (ClutterTimeline *timeline,
@@ -64,10 +84,13 @@ first_half_completed (ClutterTimeline *timeline,
 
   clutter_actor_set_position (single_pic, cur_x, geo.y);
 
-  clutter_actor_animate (single_pic, CLUTTER_LINEAR,
-                         abs (cur_x - dest_x),
-                         "x", (gfloat)dest_x,
-                         NULL);
+  ClutterAnimation* ani = clutter_actor_animate (single_pic, CLUTTER_LINEAR,
+                                                 abs (cur_x - dest_x),
+                                                 "x", (gfloat)dest_x,
+                                                 NULL);
+  ClutterTimeline* tml = clutter_animation_get_timeline (ani);
+  g_signal_connect (tml, "completed", G_CALLBACK(second_half_completed),
+                    NULL);
 }
 
 static gboolean
@@ -78,7 +101,7 @@ gesture_slide_cb (ClutterGesture    *gesture,
   ClutterGeometry geo;
   gint dest_x;
 
-  if (event && event->type == GESTURE_SLIDE)
+  if (!in_gesture_animation && event && event->type == GESTURE_SLIDE)
     {
       ClutterGestureSlideEvent *slide = (ClutterGestureSlideEvent *)event;
 
@@ -100,7 +123,9 @@ gesture_slide_cb (ClutterGesture    *gesture,
                                                      NULL);
       ClutterTimeline* tml = clutter_animation_get_timeline (ani);
       g_signal_connect (tml, "completed", G_CALLBACK(first_half_completed),
-                        geo.x);
+                        (gpointer)geo.x);
+
+      in_gesture_animation = TRUE;
       return TRUE;
     }
   return FALSE;
@@ -135,9 +160,10 @@ main (int argc, char **argv)
   /* clutter_actor_set_size (clone, width, height); */
   clutter_container_add_actor (CLUTTER_CONTAINER (stage), clone);
 
+  clutter_actor_set_reactive (clone, TRUE);
   clutter_actor_show (clone);
 
-  g_signal_connect (stage, "button-press-event",
+  g_signal_connect (clone, "button-press-event",
                     G_CALLBACK (stage_button_press_event_cb), NULL);
   g_signal_connect (stage, "button-release-event",
                     G_CALLBACK (stage_button_release_event_cb), NULL);
