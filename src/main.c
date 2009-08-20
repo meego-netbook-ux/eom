@@ -452,8 +452,12 @@ is_in_single_view_mode()
 void
 exit_single_view()
 {
+  ClutterActor* stage = clutter_stage_get_default();
   clutter_actor_destroy (single_pic);
   clutter_actor_destroy (single_view_bg);
+
+  clutter_container_add_actor (CLUTTER_CONTAINER (stage), g_viewport);
+
   single_pic = NULL;
 }
 
@@ -479,6 +483,9 @@ switch_to_single_view (ClutterGroup* group)
   ClutterColor bg_color = { 0x34, 0x39, 0x39, 0xff };
   ClutterActor* bg = clutter_rectangle_new_with_color (&bg_color);
   clutter_actor_set_size (bg, CLUTTER_STAGE_WIDTH(), CLUTTER_STAGE_HEIGHT());
+
+  clutter_container_remove_actor (CLUTTER_CONTAINER (stage), g_viewport);
+
   clutter_container_add_actor (CLUTTER_CONTAINER (stage), bg);
   clutter_actor_show (bg);
   single_view_bg = bg;
