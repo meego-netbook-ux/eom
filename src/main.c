@@ -95,6 +95,8 @@ gesture_pinch_cb (ClutterGesture    *gesture,
   if (!is_in_single_view_mode())
     return FALSE;
 
+  pressed = FALSE;
+
   x_start_1 = event->x_start_1;
   y_start_1 = event->y_start_1;
   x_start_2 = event->x_start_2;
@@ -104,50 +106,32 @@ gesture_pinch_cb (ClutterGesture    *gesture,
   x_end_2 = event->x_end_2;
   y_end_2 = event->y_end_2;
 
-#if 0
-  clutter_actor_transform_stage_point (single_pic,
-                                       event->x_start_1, event->y_start_1,
-                                       &x_start_1, &y_start_1);
+  printf ("----> pinch: start event = (%lf,%lf) - (%lf,%lf)\n",
+          x_start_1, y_start_1, x_start_2, y_start_2);
 
-  clutter_actor_transform_stage_point (single_pic,
-                                       event->x_start_2, event->y_start_2,
-                                       &x_start_2, &y_start_2);
+  printf ("----> pinch:   end event = (%lf,%lf) - (%lf,%lf)\n",
+          x_end_1, y_end_1, x_end_2, y_end_2);
 
-  clutter_actor_transform_stage_point (single_pic,
-                                       event->x_end_1, event->y_end_1,
-                                       &x_end_1, &y_end_1);
-
-  clutter_actor_transform_stage_point (single_pic,
-                                       event->x_end_2, event->y_end_2,
-                                       &x_end_2, &y_end_2);
-#endif
   gdouble dist_start = hypot(((gdouble)x_start_2 - x_start_1),
                ((gdouble)y_start_2 - y_start_1));
   gdouble dist_end = hypot(((gdouble)x_end_2 - x_end_1),
                ((gdouble)y_end_2 - y_end_1));
   scale = dist_end / dist_start;
   clutter_actor_get_scale (single_pic, &scale_x0, &scale_y0);
-  /*printf ("----> scale_x = %lf, scale_y = %lf\n", scale_x, scale_y);*/
-  clutter_actor_transform_stage_point (single_pic,
-                                       (x_start_1 + x_start_2) / 2,
-                                       (y_start_1 + y_start_2) / 2,
-                                       &center_x, &center_y);
 
-  if (center_x < 0 || center_y < 0)
-    {
-      center_x = 0;
-      center_y = 0;
-    }
-  if (center_x > clutter_actor_get_width(single_pic)
-      || center_y > clutter_actor_get_height(single_pic))
-    {
-      center_x = clutter_actor_get_width(single_pic) - 1;
-      center_y = clutter_actor_get_height(single_pic) - 1;
-    }
-  printf ("----> scale = %lf (%lf,%lf)\n", scale, center_x, center_y);
+  center_x = (x_start_1 + x_start_2) / 2;
+  center_y = (y_start_1 + y_start_2) / 2;
+
+  printf ("----> pinch: scale center = (%lf,%lf) [%lf,%lf]\n",
+          center_x, center_y, clutter_actor_get_width(single_pic),
+          clutter_actor_get_height (single_pic));
+
+  printf ("----> pinch: scale = %lf,%lf (%lf,%lf)\n", scale * scale_x0,
+          scale * scale_y0, center_x, center_y);
 
   clutter_actor_set_scale_full (single_pic, scale * scale_x0, scale * scale_y0,
                                 center_x, center_y);
+
   return TRUE;
 }
 
@@ -213,6 +197,10 @@ gesture_rotate_cb (ClutterGesture    *gesture,
   gfloat x, y, z;
   static ClutterAnimation* ani = NULL;
 
+  if (!is_in_single_view_mode())
+    return FALSE;
+
+  pressed = FALSE;
   intersection (event->x_start_1, event->y_start_1,
                 event->x_start_2, event->y_start_2,
                 event->x_end_1,   event->y_end_1,
@@ -605,8 +593,11 @@ stage_motion_event_cb (ClutterActor *actor, ClutterMotionEvent *event,
   else
     {
 #ifndef DISABLE_MOTION_SV
+      printf ("motion");
+
       clutter_actor_set_position (single_pic, pressed_viewport_x + event->x - pressed_x,
                                   pressed_viewport_y + event->y - pressed_y);
+
 #endif
     }
 #endif
