@@ -54,6 +54,7 @@ static GList* pic_actors;
 static gint total_pics;
 
 static gboolean do_rotation_timeline = FALSE;
+static gboolean test_mode = FALSE;
 static ClutterTimeline* rotation_timeline;
 
 static int rotate_test_fps, rotate_test_angle_delta;
@@ -135,6 +136,7 @@ gesture_pinch_cb (ClutterGesture    *gesture,
   return TRUE;
 }
 
+
 static void
 intersection (int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4,
               int* x0, int* y0, int* angle)
@@ -167,7 +169,9 @@ intersection (int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4,
   if (angle2 < 0)
     angle2 += 360;
 
+#ifdef HAVE_DEBUG
   printf ("angle1 = %d, angle2 = %d\n", angle1, angle2);
+#endif
   if (abs(angle1 - angle2) > 180)
     {
       *angle = 360 - abs(angle1 - angle2);
@@ -176,7 +180,9 @@ intersection (int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4,
     }
   else
     *angle = angle1 - angle2; /* clockwise */
+#ifdef HAVE_DEBUG
   printf ("return angle = %d\n", *angle);
+#endif
 }
 
 static void
@@ -209,7 +215,9 @@ gesture_rotate_cb (ClutterGesture    *gesture,
   angle = prev_angle = clutter_actor_get_rotation (single_pic, CLUTTER_Z_AXIS,
                                                    &x, &y, &z);
   angle -= angle0;
+#ifdef HAVE_DEBUG
   printf ("---> setting actor rotation: %d\n", (int)angle);
+#endif
   if (do_rotation_timeline)
     {
       if (rotation_timeline)
@@ -244,15 +252,19 @@ gesture_slide_cb (ClutterGesture    *gesture,
     "dummy",
     "SLIDE_UP", "SLIDE_DOWN", "SLIDE_LEFT", "SLIDE_RIGHT"};
 
-
+#ifdef HAVE_DEBUG
   printf("gesture_cb: event pointer %p\n", event);
+#endif
   if (event && event->type == GESTURE_SLIDE)
     {
       ClutterGestureSlideEvent *slide = (ClutterGestureSlideEvent *)event;
+#ifdef HAVE_DEBUG
       printf("slide direction :%s\n", slide_dir_name[slide->direction]);
+#endif
       switch (slide->direction)
         {
         case SLIDE_DOWN:
+#if 0
           if (!is_in_single_view_mode())
             switch_to_single_view (CLUTTER_GROUP(pic_group));
           else
@@ -264,6 +276,7 @@ gesture_slide_cb (ClutterGesture    *gesture,
               else
                 zoom_at_point (slide->x_start, slide->y_start, 0.8);
             }
+#endif
           break;
         case SLIDE_LEFT:
         case SLIDE_RIGHT:
@@ -273,8 +286,10 @@ gesture_slide_cb (ClutterGesture    *gesture,
             start_rotate_viewport (TIDY_VIEWPORT(g_viewport), slide->direction == SLIDE_LEFT);
           break;
         case SLIDE_UP:
+#if 0
           if (is_in_single_view_mode())
             zoom_at_point (slide->x_start, slide->y_start, 1.0/0.8);
+#endif
           break;
       }
     }
@@ -302,10 +317,17 @@ view_pic (ClutterActor* actor, gboolean from_right)
 {
   gfloat width, height;
   gfloat new_view_x0, new_view_y0;
+  ClutterColor test_block_color = { 0x7f, 0xae, 0xff, 0xff };
+
   ClutterActor* stage = clutter_stage_get_default();
 
   clutter_actor_get_size (actor, &width, &height);
-  ClutterActor* clone = clutter_clone_new (actor);
+  ClutterActor* clone;
+
+  if (test_mode)
+    clone = clutter_rectangle_new_with_color (&test_block_color);
+  else
+    clone = clutter_clone_new (actor);
 
   gfloat disp_height = height * CLUTTER_STAGE_WIDTH() / width;
   gfloat disp_width = width * CLUTTER_STAGE_HEIGHT() / height;
@@ -417,8 +439,12 @@ is_in_single_view_mode()
 void
 exit_single_view()
 {
+  ClutterActor* stage = clutter_stage_get_default();
   clutter_actor_destroy (single_pic);
   clutter_actor_destroy (single_view_bg);
+
+  clutter_actor_show (g_viewport);
+
   single_pic = NULL;
 }
 
@@ -444,6 +470,9 @@ switch_to_single_view (ClutterGroup* group)
   ClutterColor bg_color = { 0x34, 0x39, 0x39, 0xff };
   ClutterActor* bg = clutter_rectangle_new_with_color (&bg_color);
   clutter_actor_set_size (bg, CLUTTER_STAGE_WIDTH(), CLUTTER_STAGE_HEIGHT());
+
+  clutter_actor_hide (g_viewport);
+
   clutter_container_add_actor (CLUTTER_CONTAINER (stage), bg);
   clutter_actor_show (bg);
   single_view_bg = bg;
@@ -780,7 +809,9 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
         {
           GFile* file = g_file_get_child (root, name);
           const char* path = g_file_get_path (file);
+#ifdef HAVE_DEBUG
           printf("adding %s (%s) ... ", name, mime_type);
+#endif
           if ((actor = clutter_texture_new_from_file(path, NULL)))
             {
               gint width, height;
@@ -797,10 +828,16 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
               new_black_actor(actor, group);
 #endif
               i++;
+#ifdef HAVE_DEBUG
               printf ("\n");
+#endif
             }
           else
-            printf ("failed\n");
+            {
+#ifdef HAVE_DEBUG
+              printf ("failed\n");
+#endif
+            }
           g_free ((gpointer)path);
           g_object_unref (file);
        }
@@ -855,7 +892,7 @@ main (int argc, char **argv)
   gboolean pinch_only = FALSE, rotate_only = FALSE;
   int double_click_radius = 10, c, sample_freq = 120;
 
-  while ((c = getopt (argc, argv, "tpofhr:s:e:d:a:")) != -1)
+  while ((c = getopt (argc, argv, "btpofhr:s:e:d:a:")) != -1)
     switch (c)
       {
       case 'd':
@@ -863,6 +900,9 @@ main (int argc, char **argv)
         break;
       case 'a':
         rotate_test_angle_delta = atoi (optarg);
+        break;
+      case 'b':
+        test_mode = TRUE;
         break;
       case 't':
         do_rotation_timeline = TRUE;
@@ -914,6 +954,10 @@ main (int argc, char **argv)
   clutter_init (&argc, &argv);
 
   stage = clutter_stage_get_default ();
+
+  clutter_stage_set_throttle_motion_events(CLUTTER_STAGE(stage), FALSE);
+
+  clutter_set_default_frame_rate(60);
 
   if (hide_cursor)
     clutter_stage_hide_cursor (CLUTTER_STAGE(stage));
@@ -975,15 +1019,17 @@ main (int argc, char **argv)
 
   gesture = clutter_gesture_new(CLUTTER_ACTOR(stage));
   clutter_gesture_set_gesture_mask(gesture, stage,
-                                   GESTURE_MASK_SLIDE | GESTURE_MASK_PINCH | GESTURE_MASK_ROTATE );
+                                   GESTURE_MASK_SLIDE);
   g_signal_connect (gesture, "gesture-slide-event",
                     G_CALLBACK (gesture_slide_cb), (gpointer)0x11223344);
+
   if (!rotate_only)
     g_signal_connect (gesture, "gesture-pinch-event",
                       G_CALLBACK (gesture_pinch_cb), (gpointer)0x11223344);
   if (!pinch_only)
     g_signal_connect (gesture, "gesture-rotate-event",
                       G_CALLBACK (gesture_rotate_cb), (gpointer)0x11223344);
+
 #endif
   clutter_main ();
 
