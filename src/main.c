@@ -489,6 +489,7 @@ switch_to_single_view (ClutterGroup* group)
   clutter_actor_set_size (bg, CLUTTER_STAGE_WIDTH(), CLUTTER_STAGE_HEIGHT());
 
   clutter_actor_hide (g_viewport);
+  //clutter_actor_unrealize (g_viewport);
 
   clutter_container_add_actor (CLUTTER_CONTAINER (stage), bg);
   clutter_actor_show (bg);
@@ -989,8 +990,9 @@ main (int argc, char **argv)
 
   clutter_stage_set_color (CLUTTER_STAGE (stage), &stage_color);
   //  clutter_stage_set_use_fog (CLUTTER_STAGE (stage), TRUE);
-  //clutter_actor_set_size (stage, 1280, 800);
   clutter_stage_set_fullscreen (CLUTTER_STAGE(stage), fullscreen);
+  if (!fullscreen)
+    clutter_actor_set_size (stage, 800, 600);
   viewport = tidy_viewport_new ();
   g_viewport = viewport;
 
