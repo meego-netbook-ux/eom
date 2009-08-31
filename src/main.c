@@ -61,6 +61,12 @@ static int rotate_test_fps, rotate_test_angle_delta;
 
 static int g_speed = 30;
 
+gboolean pinch_center_set = FALSE;
+gfloat pinch_x, pinch_y;
+
+gboolean rotation_center_set = FALSE;
+gfloat rot_x, rot_y;
+
 void switch_to_single_view (ClutterGroup* group);
 void single_view_navigate (gboolean next);
 gboolean is_in_single_view_mode();
@@ -91,12 +97,9 @@ gesture_pinch_cb (ClutterGesture    *gesture,
 {
   gdouble scale_x0, scale_y0, scale;
   gfloat x_start_1, y_start_1, x_start_2, y_start_2, x_end_1, y_end_1, x_end_2, y_end_2;
-  gfloat center_x, center_y;
 
   if (!is_in_single_view_mode())
     return FALSE;
-
-  pressed = FALSE;
 
   x_start_1 = event->x_start_1;
   y_start_1 = event->y_start_1;
@@ -120,18 +123,26 @@ gesture_pinch_cb (ClutterGesture    *gesture,
   scale = dist_end / dist_start;
   clutter_actor_get_scale (single_pic, &scale_x0, &scale_y0);
 
-  center_x = (x_start_1 + x_start_2) / 2;
-  center_y = (y_start_1 + y_start_2) / 2;
+  if (!pinch_center_set)
+    {
+      /* we are in the first pinch event */
+      pinch_x = (x_start_1 + x_start_2) / 2;
+      pinch_y = (y_start_1 + y_start_2) / 2;
+      pinch_center_set = TRUE;
+    }
 
   printf ("----> pinch: scale center = (%lf,%lf) [%lf,%lf]\n",
-          center_x, center_y, clutter_actor_get_width(single_pic),
+          pinch_x, pinch_y, clutter_actor_get_width(single_pic),
           clutter_actor_get_height (single_pic));
 
-  printf ("----> pinch: scale = %lf,%lf (%lf,%lf)\n", scale * scale_x0,
-          scale * scale_y0, center_x, center_y);
+  printf ("----> pinch: scale = %lf,%lf\n", scale * scale_x0,
+          scale * scale_y0);
 
   clutter_actor_set_scale_full (single_pic, scale * scale_x0, scale * scale_y0,
-                                center_x, center_y);
+                                pinch_x, pinch_y);
+
+  /* we don't want motion event while we're pinching */
+  pressed = FALSE;
 
   return TRUE;
 }
@@ -215,6 +226,14 @@ gesture_rotate_cb (ClutterGesture    *gesture,
   angle = prev_angle = clutter_actor_get_rotation (single_pic, CLUTTER_Z_AXIS,
                                                    &x, &y, &z);
   angle -= angle0;
+
+  if (!rotation_center_set)
+    {
+      rot_x = x0;
+      rot_y = y0;
+      rotation_center_set = TRUE;
+    }
+
 #ifdef HAVE_DEBUG
   printf ("---> setting actor rotation: %d\n", (int)angle);
 #endif
@@ -226,16 +245,17 @@ gesture_rotate_cb (ClutterGesture    *gesture,
         }
       /* setting rotation center only */
       clutter_actor_set_rotation (single_pic, CLUTTER_Z_AXIS, prev_angle,
-                                x0, y0, z);
+                                rot_x, rot_y, z);
       ani = clutter_actor_animate (single_pic, CLUTTER_LINEAR, 60,
                                        "rotation-angle-z", angle,
                                        NULL);
       rotation_timeline = clutter_animation_get_timeline (ani);
-      g_signal_connect (rotation_timeline, "completed", G_CALLBACK(clear_rotation_timeline), NULL);
+      g_signal_connect (rotation_timeline, "completed",
+                        G_CALLBACK(clear_rotation_timeline), NULL);
     }
   else
     clutter_actor_set_rotation (single_pic, CLUTTER_Z_AXIS, angle,
-                                x0, y0, z);
+                                rot_x, rot_y, z);
   return TRUE;
 }
 
@@ -536,6 +556,9 @@ stage_button_press_event_cb (ClutterActor *actor, ClutterButtonEvent *event,
                              TidyViewport *viewport)
 {
   int value;
+
+  puts ("button pressed.");
+
   pressed = TRUE;
   pressed_x = event->x;
   pressed_y = event->y;
@@ -561,6 +584,10 @@ stage_button_release_event_cb (ClutterActor *actor, ClutterButtonEvent *event,
                                TidyViewport *viewport)
 {
   pressed = FALSE;
+  pinch_center_set = FALSE;
+  rotation_center_set = FALSE;
+
+  puts ("button released.");
   if (is_in_single_view_mode())
     {
       if (event->click_count == 2)
