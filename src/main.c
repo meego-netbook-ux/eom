@@ -32,6 +32,8 @@
 #include <tidy/tidy-viewport.h>
 #include <tidy/tidy-depth-group.h>
 
+#include "debug.h"
+
 #define FPS 60
 
 #ifdef HAVE_GESTURE
@@ -123,6 +125,10 @@ gesture_pinch_cb (ClutterGesture    *gesture,
   scale = dist_end / dist_start;
   clutter_actor_get_scale (single_pic, &scale_x0, &scale_y0);
 
+  clutter_actor_transform_stage_point (single_pic,
+                                       (x_start_1 + x_start_2) / 2,
+                                       (y_start_1 + y_start_2) / 2,
+                                       &center_x, &center_y);
   if (!pinch_center_set)
     {
       /* we are in the first pinch event */
@@ -131,12 +137,12 @@ gesture_pinch_cb (ClutterGesture    *gesture,
       pinch_center_set = TRUE;
     }
 
-  printf ("----> pinch: scale center = (%lf,%lf) [%lf,%lf]\n",
-          pinch_x, pinch_y, clutter_actor_get_width(single_pic),
-          clutter_actor_get_height (single_pic));
+  DBG ("----> pinch: scale center = (%lf,%lf) [%lf,%lf]\n",
+       pinch_x, pinch_y, clutter_actor_get_width(single_pic),
+       clutter_actor_get_height (single_pic));
 
-  printf ("----> pinch: scale = %lf,%lf\n", scale * scale_x0,
-          scale * scale_y0);
+  DBG ("----> pinch: scale = %lf,%lf\n", scale * scale_x0,
+       scale * scale_y0);
 
   clutter_actor_set_scale_full (single_pic, scale * scale_x0, scale * scale_y0,
                                 pinch_x, pinch_y);
@@ -180,9 +186,9 @@ intersection (int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4,
   if (angle2 < 0)
     angle2 += 360;
 
-#ifdef HAVE_DEBUG
-  printf ("angle1 = %d, angle2 = %d\n", angle1, angle2);
-#endif
+
+  DBG ("angle1 = %d, angle2 = %d\n", angle1, angle2);
+
   if (abs(angle1 - angle2) > 180)
     {
       *angle = 360 - abs(angle1 - angle2);
@@ -191,9 +197,9 @@ intersection (int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4,
     }
   else
     *angle = angle1 - angle2; /* clockwise */
-#ifdef HAVE_DEBUG
-  printf ("return angle = %d\n", *angle);
-#endif
+
+  DBG ("return angle = %d\n", *angle);
+
 }
 
 static void
@@ -235,8 +241,9 @@ gesture_rotate_cb (ClutterGesture    *gesture,
     }
 
 #ifdef HAVE_DEBUG
-  printf ("---> setting actor rotation: %d\n", (int)angle);
+  DBG ("---> setting actor rotation: %d\n", (int)angle);
 #endif
+
   if (do_rotation_timeline)
     {
       if (rotation_timeline)
@@ -272,15 +279,13 @@ gesture_slide_cb (ClutterGesture    *gesture,
     "dummy",
     "SLIDE_UP", "SLIDE_DOWN", "SLIDE_LEFT", "SLIDE_RIGHT"};
 
-#ifdef HAVE_DEBUG
-  printf("gesture_cb: event pointer %p\n", event);
-#endif
+  DBG ("gesture_cb: event pointer %p\n", event);
+
   if (event && event->type == GESTURE_SLIDE)
     {
       ClutterGestureSlideEvent *slide = (ClutterGestureSlideEvent *)event;
-#ifdef HAVE_DEBUG
-      printf("slide direction :%s\n", slide_dir_name[slide->direction]);
-#endif
+      DBG ("slide direction :%s\n", slide_dir_name[slide->direction]);
+
       switch (slide->direction)
         {
         case SLIDE_DOWN:
@@ -488,6 +493,7 @@ switch_to_single_view (ClutterGroup* group)
   clutter_actor_set_size (bg, CLUTTER_STAGE_WIDTH(), CLUTTER_STAGE_HEIGHT());
 
   clutter_actor_hide (g_viewport);
+  //clutter_actor_unrealize (g_viewport);
 
   clutter_container_add_actor (CLUTTER_CONTAINER (stage), bg);
   clutter_actor_show (bg);
@@ -832,9 +838,8 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
         {
           GFile* file = g_file_get_child (root, name);
           const char* path = g_file_get_path (file);
-#ifdef HAVE_DEBUG
-          printf("adding %s (%s) ... ", name, mime_type);
-#endif
+          DBG ("adding %s (%s) ... ", name, mime_type);
+
           if ((actor = clutter_texture_new_from_file(path, NULL)))
             {
               gint width, height;
@@ -851,15 +856,11 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
               new_black_actor(actor, group);
 #endif
               i++;
-#ifdef HAVE_DEBUG
-              printf ("\n");
-#endif
+              DBG  ("\n");
             }
           else
             {
-#ifdef HAVE_DEBUG
-              printf ("failed\n");
-#endif
+              DBG  ("failed\n");
             }
           g_free ((gpointer)path);
           g_object_unref (file);
@@ -985,7 +986,7 @@ main (int argc, char **argv)
   if (hide_cursor)
     clutter_stage_hide_cursor (CLUTTER_STAGE(stage));
 
-  printf ("SETTING DOUBLE CLICK DISTANCE = %d\n", double_click_radius);
+  DBG ("SETTING DOUBLE CLICK DISTANCE = %d\n", double_click_radius);
   clutter_backend_set_double_click_distance (clutter_get_default_backend (),
                                              double_click_radius);
 
@@ -998,8 +999,15 @@ main (int argc, char **argv)
 
   clutter_stage_set_color (CLUTTER_STAGE (stage), &stage_color);
   //  clutter_stage_set_use_fog (CLUTTER_STAGE (stage), TRUE);
-  //clutter_actor_set_size (stage, 1280, 800);
   clutter_stage_set_fullscreen (CLUTTER_STAGE(stage), fullscreen);
+
+  /* we need motion events on the stage only,
+   * to save the pick/paint.
+   */
+  clutter_set_motion_events_enabled (FALSE);
+
+  if (!fullscreen)
+    clutter_actor_set_size (stage, 800, 600);
   viewport = tidy_viewport_new ();
   g_viewport = viewport;
 
