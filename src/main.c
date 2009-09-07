@@ -29,8 +29,10 @@
 #include <gio/gio.h>
 #include <clutter/clutter.h>
 #include <clutter/x11/clutter-x11.h>
+
 #include <tidy/tidy-viewport.h>
 #include <tidy/tidy-depth-group.h>
+#include <tidy/tidy-dark-texture.h>
 
 #include "debug.h"
 
@@ -348,7 +350,10 @@ view_pic (ClutterActor* actor, gboolean from_right)
   if (test_mode)
     clone = clutter_rectangle_new_with_color (&test_block_color);
   else
-    clone = clutter_clone_new (actor);
+    {
+      g_object_set (actor, "gamma", 255, NULL);
+      clone = clutter_clone_new (actor);
+    }
 
   gfloat disp_height = height * CLUTTER_STAGE_WIDTH() / width;
   gfloat disp_width = width * CLUTTER_STAGE_HEIGHT() / height;
@@ -464,6 +469,7 @@ exit_single_view()
   clutter_actor_destroy (single_pic);
   clutter_actor_destroy (single_view_bg);
 
+  g_object_notify (G_OBJECT (g_viewport), "x-origin");
   clutter_actor_show (g_viewport);
 
   single_pic = NULL;
@@ -773,46 +779,21 @@ viewport_x_origin_notify_cb (TidyViewport *viewport,
       pos = CLAMP(pos * 3.0, -0.5, 0.5);
       clutter_actor_set_rotation (actor, CLUTTER_Y_AXIS, -pos * 120.0,
                                   RECT_W/2, 0, RECT_H/2);
-#ifdef HAVE_GAMMA
-      if (clutter_actor_get_name(actor))
+
+      if (ABS(pos) < 0.1)
         {
-          /* this is the dark actor mask */
-          if (ABS(pos) < 0.1)
-            {
-              clutter_actor_set_depth (actor, -ABS(pos) * RECT_W - 1);
-              clutter_actor_set_opacity (actor, 0);
-            }
-          else
-            {
-              clutter_actor_set_depth (actor, -ABS(pos) * RECT_W + 1);
-              clutter_actor_set_opacity (actor, 180);
-            }
+          g_object_set (G_OBJECT (actor), "gamma", 255, NULL);
         }
       else
         {
-          clutter_actor_set_depth (actor, -ABS(pos) * RECT_W);
+          g_object_set (G_OBJECT (actor), "gamma", 0x70, NULL);
         }
-#endif
+      clutter_actor_set_depth (actor, -ABS(pos) * RECT_W);
+
     }
   g_list_free (children);
 }
 
-#ifdef HAVE_GAMMA
-
-static void
-new_black_actor (ClutterActor* orig, ClutterActor* group)
-{
-  ClutterGeometry geo;
-
-  ClutterColor colour = { 0x00, 0x00, 0x00, 0xFF };
-  ClutterActor* actor = clutter_rectangle_new_with_color(&colour);
-  clutter_actor_get_geometry (orig, &geo);
-  clutter_actor_set_geometry (actor, &geo);
-  clutter_container_add_actor (CLUTTER_CONTAINER (group), actor);
-  clutter_actor_raise (actor, orig);
-  clutter_actor_set_name (actor, "b");
-}
-#endif
 
 static void
 add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
@@ -840,7 +821,7 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
           const char* path = g_file_get_path (file);
           DBG ("adding %s (%s) ... ", name, mime_type);
 
-          if ((actor = clutter_texture_new_from_file(path, NULL)))
+          if ((actor = tidy_dark_texture_new_from_file(path, NULL)))
             {
               gint width, height;
               clutter_texture_get_base_size (CLUTTER_TEXTURE(actor), &width, &height);
@@ -852,9 +833,6 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
                                           CLUTTER_STAGE_HEIGHT ()/2 - disp_height/2);
 
               pic_actors = g_list_append (pic_actors, actor);
-#ifdef HAVE_GAMMA
-              new_black_actor(actor, group);
-#endif
               i++;
               DBG  ("\n");
             }
