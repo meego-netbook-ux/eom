@@ -127,10 +127,6 @@ gesture_pinch_cb (ClutterGesture    *gesture,
   scale = dist_end / dist_start;
   clutter_actor_get_scale (single_pic, &scale_x0, &scale_y0);
 
-  clutter_actor_transform_stage_point (single_pic,
-                                       (x_start_1 + x_start_2) / 2,
-                                       (y_start_1 + y_start_2) / 2,
-                                       &center_x, &center_y);
   if (!pinch_center_set)
     {
       /* we are in the first pinch event */
