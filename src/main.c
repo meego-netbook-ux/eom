@@ -346,7 +346,10 @@ view_pic (ClutterActor* actor, gboolean from_right)
   if (test_mode)
     clone = clutter_rectangle_new_with_color (&test_block_color);
   else
-    clone = clutter_clone_new (actor);
+    {
+      g_object_set (actor, "gamma", 255, NULL);
+      clone = clutter_clone_new (actor);
+    }
 
   gfloat disp_height = height * CLUTTER_STAGE_WIDTH() / width;
   gfloat disp_width = width * CLUTTER_STAGE_HEIGHT() / height;
@@ -462,6 +465,7 @@ exit_single_view()
   clutter_actor_destroy (single_pic);
   clutter_actor_destroy (single_view_bg);
 
+  g_object_notify (G_OBJECT (g_viewport), "x-origin");
   clutter_actor_show (g_viewport);
 
   single_pic = NULL;
