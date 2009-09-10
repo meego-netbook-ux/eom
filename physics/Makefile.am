@@ -1,7 +1,7 @@
 bin_PROGRAMS = pictable
 
-AM_CFLAGS = @PTDEP_CFLAGS@
-AM_LDFLAGS = @PTDEP_LIBS@ 
+pictable_CFLAGS = @PTDEP_CFLAGS@
+pictable_LDFLAGS = @PTDEP_LIBS@ 
 
 pictable_SOURCES = \
 	blockbox.h		\
