@@ -89,7 +89,7 @@ size_change (ClutterTexture *texture,
 static void
 add_actor_to_cage (ClutterActor* actor, ClutterActor* group)
 {
-  int width, height;
+  gfloat width, height;
   gint x, y;
   x = clutter_actor_get_width (clutter_stage_get_default ()) / 2;
   y = clutter_actor_get_height (clutter_stage_get_default ()) * 0.5;
@@ -186,7 +186,7 @@ add_pics (ClutterActor *stage, ClutterActor *group, const char* img_folder)
           add_actor_to_cage (texture, group);
           if (!timeline)
             {
-              timeline = clutter_timeline_new (100, 30); /* num frames, fps */
+              timeline = clutter_timeline_new (3000); /* msec */
               g_object_set(timeline, "loop", TRUE, NULL);
               clutter_timeline_start (timeline);
             }
@@ -253,6 +253,7 @@ pick_actor(ClutterActor* stage, int x, int y, gboolean* emit)
   ClutterActor *actor;
 
   actor = clutter_stage_get_actor_at_pos (CLUTTER_STAGE (stage),
+                                          CLUTTER_PICK_ALL,
                                           x, y);
 
   const gchar* name = clutter_actor_get_name(actor);
@@ -300,7 +301,7 @@ gesture_cb (ClutterGesture    *gesture,
       if (g_hash_table_lookup (animations, actor) != NULL)
         return TRUE;
       /* yes, now we can do the rotation */
-      ClutterTimeline *timeline = clutter_timeline_new (60, 60);
+      ClutterTimeline *timeline = clutter_timeline_new (1000);
       g_hash_table_insert (animations, actor, timeline);
       clutter_timeline_set_loop (timeline, TRUE);
       ClutterBehaviour* r_behave;
@@ -373,7 +374,7 @@ button_press (ClutterActor *stage,
   if (timeline)
     {
       clutter_timeline_stop (timeline);
-      int width, height;
+      gfloat width, height;
       clutter_actor_get_size (actor, &width, &height);
       clutter_actor_set_rotation (actor, CLUTTER_X_AXIS, 0, 0, height / 2, 0);
       clutter_actor_set_rotation (actor, CLUTTER_Y_AXIS, 0, width / 2, 0, 0);
@@ -451,7 +452,7 @@ main (int   argc,
   clutter_stage_set_color (CLUTTER_STAGE (stage), &stage_color);
 
   if (fullscreen)
-    clutter_stage_fullscreen (CLUTTER_STAGE(stage));
+    clutter_stage_set_fullscreen (CLUTTER_STAGE(stage), TRUE);
   else
     clutter_actor_set_size (stage, 720, 576);
 

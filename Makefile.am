@@ -1,2 +1,2 @@
 ACLOCAL_AMFLAGS = -I shave
-SUBDIRS = tidy src
+SUBDIRS = tidy src physics

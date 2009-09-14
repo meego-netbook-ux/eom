@@ -60,7 +60,7 @@ PKG_CHECK_MODULES(DEPS, $EOM_MODULES)
 AC_SUBST(DEPS_CFLAGS)
 AC_SUBST(DEPS_LIBS)
 
-PKG_CHECK_MODULES(PTDEP, $EOM_MODULES)
+PKG_CHECK_MODULES(PTDEP, $PICTABLE_MODULES)
 AC_SUBST(PTDEP_CFLAGS)
 AC_SUBST(PTDEP_LIBS)
 
@@ -74,6 +74,7 @@ AC_CONFIG_FILES([
     Makefile
     src/Makefile
     tidy/Makefile
+    physics/Makefile
 ])
 
 dnl End the configure script.

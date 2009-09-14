@@ -6,7 +6,7 @@
 
 #include <glib.h>
 #include <clutter/clutter.h>
-#include "clutter-box2d.h"
+#include <clutter-box2d/clutter-box2d.h>
 #include "blockbox.h"
 
 typedef struct
