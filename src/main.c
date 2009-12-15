@@ -323,8 +323,10 @@ gesture_slide_cb (ClutterGesture    *gesture,
         case SLIDE_RIGHT:
           if (is_in_single_view_mode())
             single_view_navigate (slide->direction == SLIDE_RIGHT);
-          else
+          else {
+            pressed = FALSE;
             start_rotate_viewport (TIDY_VIEWPORT(g_viewport), slide->direction == SLIDE_LEFT);
+          }
           break;
         case SLIDE_UP:
           if (is_in_single_view_mode())
@@ -613,6 +615,9 @@ static void
 stage_button_release_event_cb (ClutterActor *actor, ClutterButtonEvent *event,
                                TidyViewport *viewport)
 {
+  if (!pressed)
+    return;
+
   pressed = FALSE;
   pinch_center_set = FALSE;
   rotation_center_set = FALSE;
