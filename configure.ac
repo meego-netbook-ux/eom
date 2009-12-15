@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script
 
-AC_INIT([eom], [0.6])
+AC_INIT([eom], [0.6.2])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_MACRO_DIR([shave])
 
@@ -24,6 +24,11 @@ AC_ARG_ENABLE(gesture,
                  [disable gesture support]),,
   enable_gesture=yes)
 
+AC_ARG_ENABLE(twofinger,
+  AC_HELP_STRING([--disable-twofinger],
+                 [disable two finger gesture support]),,
+  enable_twofinger=yes)
+
 AC_ARG_ENABLE(no-motion,
   AC_HELP_STRING([--enable-no-motion],
                  [no motion event]),no_motion=yes,)
@@ -37,6 +42,10 @@ if test x$enable_gesture = xyes; then
     AC_DEFINE(HAVE_GESTURE,1,[Build with gesture support])
     EOM_MODULES="$EOM_MODULES clutter-gesture"
     PICTABLE_MODULES="$PICTABLE_MODULES clutter-gesture"
+fi
+
+if test x$enable_twofinger = xyes; then
+    AC_DEFINE(HAVE_TWO_FINGER_SLIDE,1,[Build with 2 finger slide support])
 fi
 
 if test x$enable_gamma = xyes; then

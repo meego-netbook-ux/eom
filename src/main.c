@@ -114,10 +114,10 @@ gesture_pinch_cb (ClutterGesture    *gesture,
   x_end_2 = event->x_end_2;
   y_end_2 = event->y_end_2;
 
-  printf ("----> pinch: start event = (%lf,%lf) - (%lf,%lf)\n",
+  DBG ("----> pinch: start event = (%lf,%lf) - (%lf,%lf)\n",
           x_start_1, y_start_1, x_start_2, y_start_2);
 
-  printf ("----> pinch:   end event = (%lf,%lf) - (%lf,%lf)\n",
+  DBG ("----> pinch:   end event = (%lf,%lf) - (%lf,%lf)\n",
           x_end_1, y_end_1, x_end_2, y_end_2);
 
   gdouble dist_start = hypot(((gdouble)x_start_2 - x_start_1),
@@ -264,6 +264,26 @@ gesture_rotate_cb (ClutterGesture    *gesture,
   return TRUE;
 }
 
+#ifdef HAVE_TWO_FINGER_SLIDE
+static gboolean
+gesture_navigate_cb (ClutterGesture    *gesture,
+                     ClutterGestureNavigateEvent    *event,
+                     TidyViewport         *viewport)
+{
+  gint x, y, z;
+  DBG ("gesture_navigate_cb is called\n");
+  if (!is_in_single_view_mode())
+    {
+      DBG ("event->x_start_1 is %d, event->x_end_1 is %d\n", event->x_start_1, event->x_end_1);
+      tidy_viewport_get_origin (TIDY_VIEWPORT (viewport), &x, &y, &z);
+      tidy_viewport_set_origin (TIDY_VIEWPORT (viewport),
+                                x + event->x_start_1 - event->x_end_1,
+                                y, z);
+    }
+
+  return FALSE;
+}
+#endif
 
 static gboolean
 gesture_slide_cb (ClutterGesture    *gesture,
@@ -347,7 +367,9 @@ view_pic (ClutterActor* actor, gboolean from_right)
     clone = clutter_rectangle_new_with_color (&test_block_color);
   else
     {
+#ifdef HAVE_GAMMA
       g_object_set (actor, "gamma", 255, NULL);
+#endif
       clone = clutter_clone_new (actor);
     }
 
@@ -646,14 +668,16 @@ stage_motion_event_cb (ClutterActor *actor, ClutterMotionEvent *event,
 
   if (!is_in_single_view_mode())
     {
+#ifndef HAVE_TWO_FINGER_SLIDE
       tidy_viewport_get_origin (TIDY_VIEWPORT (viewport), NULL, &y, &z);
       tidy_viewport_set_origin (TIDY_VIEWPORT (viewport),
                                 pressed_viewport_x - event->x + pressed_x, y, z);
+#endif
     }
   else
     {
 #ifndef DISABLE_MOTION_SV
-      printf ("motion");
+      DBG ("motion");
 
       clutter_actor_set_position (single_pic, pressed_viewport_x + event->x - pressed_x,
                                   pressed_viewport_y + event->y - pressed_y);
@@ -776,6 +800,7 @@ viewport_x_origin_notify_cb (TidyViewport *viewport,
       clutter_actor_set_rotation (actor, CLUTTER_Y_AXIS, -pos * 120.0,
                                   RECT_W/2, 0, RECT_H/2);
 
+#ifdef HAVE_GAMMA
       if (ABS(pos) < 0.1)
         {
           g_object_set (G_OBJECT (actor), "gamma", 255, NULL);
@@ -784,6 +809,7 @@ viewport_x_origin_notify_cb (TidyViewport *viewport,
         {
           g_object_set (G_OBJECT (actor), "gamma", 0x70, NULL);
         }
+#endif
       clutter_actor_set_depth (actor, -ABS(pos) * RECT_W);
 
     }
@@ -1036,6 +1062,12 @@ main (int argc, char **argv)
   if (!pinch_only)
     g_signal_connect (gesture, "gesture-rotate-event",
                       G_CALLBACK (gesture_rotate_cb), (gpointer)0x11223344);
+
+#ifdef HAVE_TWO_FINGER_SLIDE
+  g_signal_connect (gesture, "gesture-navigate-event",
+                    G_CALLBACK (gesture_navigate_cb), (gpointer)viewport);
+
+#endif
 
 #endif
   clutter_main ();
