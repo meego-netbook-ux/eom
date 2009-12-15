@@ -25,9 +25,10 @@ AC_ARG_ENABLE(gesture,
   enable_gesture=yes)
 
 AC_ARG_ENABLE(twofinger,
-  AC_HELP_STRING([--disable-twofinger],
-                 [disable two finger gesture support]),,
-  enable_twofinger=yes)
+  AC_HELP_STRING([--enable-twofinger],
+                 [enable two finger gesture support]),
+  enable_twofinger=$enableval,
+  enable_twofinger=no)
 
 AC_ARG_ENABLE(no-motion,
   AC_HELP_STRING([--enable-no-motion],
