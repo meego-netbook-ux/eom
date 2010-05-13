@@ -48,6 +48,7 @@
 #define RECT_GAP 50
 #define FRAMES 20
 
+static gint stage_width, stage_height;
 static ClutterTimeline *timeline;
 static gint start, target;
 static gboolean pressed = FALSE;
@@ -56,6 +57,7 @@ static ClutterActor* pic_group, *single_pic, *current_actor, *single_view_bg, *g
 static gfloat single_view_x0, single_view_y0;
 static GList* pic_actors;
 static gint total_pics;
+static const char* folder;
 
 static gboolean do_rotation_timeline = FALSE;
 static gboolean test_mode = FALSE;
@@ -64,6 +66,7 @@ static ClutterTimeline* rotation_timeline;
 static int rotate_test_fps, rotate_test_angle_delta;
 
 static int g_speed = 30;
+static  gboolean pinch_only = FALSE, rotate_only = FALSE;
 
 gboolean pinch_center_set = FALSE;
 gfloat pinch_x, pinch_y;
@@ -76,6 +79,7 @@ void single_view_navigate (gboolean next);
 gboolean is_in_single_view_mode();
 gboolean zoom_at_point (int x, int y, float scale);
 void slide_viewport (TidyViewport* viewport, gint old_target, gint new_target, gint frames);
+static void construct_stage();
 
 static void
 rotate_single_pic (int fps, int angle_delta)
@@ -375,20 +379,20 @@ view_pic (ClutterActor* actor, gboolean from_right)
       clone = clutter_clone_new (actor);
     }
 
-  gfloat disp_height = height * CLUTTER_STAGE_WIDTH() / width;
-  gfloat disp_width = width * CLUTTER_STAGE_HEIGHT() / height;
+  gfloat disp_height = height * stage_width / width;
+  gfloat disp_width = width * stage_height / height;
 
-  if (disp_height > CLUTTER_STAGE_HEIGHT())
+  if (disp_height > stage_height)
     {
-      disp_height = CLUTTER_STAGE_HEIGHT();
-      new_view_x0 = CLUTTER_STAGE_WIDTH ()/2 - disp_width/2;
+      disp_height = stage_height;
+      new_view_x0 = stage_width/2 - disp_width/2;
       new_view_y0 = 0;
     }
   else
     {
-      disp_width = CLUTTER_STAGE_WIDTH();
+      disp_width = stage_width;
       new_view_x0 = 0;
-      new_view_y0 = CLUTTER_STAGE_HEIGHT ()/2 - disp_height/2;
+      new_view_y0 = stage_height / 2 - disp_height/2;
     }
 
   clutter_actor_set_size (clone, disp_width, disp_height);
@@ -400,12 +404,12 @@ view_pic (ClutterActor* actor, gboolean from_right)
         {
           ani_1 = clutter_actor_animate(single_pic, CLUTTER_LINEAR, 250,
                                         "x", -width, NULL);
-          clutter_actor_set_position (clone, CLUTTER_STAGE_WIDTH(), new_view_y0);
+          clutter_actor_set_position (clone, stage_width, new_view_y0);
         }
       else
         {
           ani_1 = clutter_actor_animate(single_pic, CLUTTER_LINEAR, 250,
-                                        "x", CLUTTER_STAGE_WIDTH(), NULL);
+                                        "x", stage_width, NULL);
           clutter_actor_set_position (clone, -disp_width, new_view_y0);
         }
       ClutterTimeline* timeline = clutter_animation_get_timeline (ani_1);
@@ -453,8 +457,8 @@ zoom_at_point (int x, int y, float scale)
     }
   else
     {
-      gfloat newx = geo.x - ( x - CLUTTER_STAGE_WIDTH() / 2 );
-      gfloat newy = geo.y - ( y - CLUTTER_STAGE_HEIGHT() / 2 );
+      gfloat newx = geo.x - ( x - stage_width / 2 );
+      gfloat newy = geo.y - ( y - stage_height / 2 );
       clutter_actor_animate (single_pic,
                              CLUTTER_LINEAR, 500,
                              "x", newx > 0 ? 0 : newx,
@@ -516,7 +520,7 @@ switch_to_single_view (ClutterGroup* group)
 
   ClutterColor bg_color = { 0x34, 0x39, 0x39, 0xff };
   ClutterActor* bg = clutter_rectangle_new_with_color (&bg_color);
-  clutter_actor_set_size (bg, CLUTTER_STAGE_WIDTH(), CLUTTER_STAGE_HEIGHT());
+  clutter_actor_set_size (bg, stage_width, stage_height);
 
   clutter_actor_hide (g_viewport);
   //clutter_actor_unrealize (g_viewport);
@@ -645,11 +649,11 @@ stage_button_release_event_cb (ClutterActor *actor, ClutterButtonEvent *event,
   else
     {
       /* single click */
-      if (event->x > CLUTTER_STAGE_WIDTH() * 3 / 5)
+      if (event->x > stage_width * 3 / 5)
         {
           target += RECT_GAP;
         }
-      else if (event->x < CLUTTER_STAGE_WIDTH() * 2 / 5)
+      else if (event->x < stage_width * 2 / 5)
         {
           target -= RECT_GAP;
         }
@@ -918,7 +922,6 @@ main (int argc, char **argv)
   ClutterActor *stage, *viewport, *group;
   ClutterColor stage_color = { 0x34, 0x39, 0x39, 0xff };
   gboolean hide_cursor = FALSE, fullscreen = TRUE;
-  gboolean pinch_only = FALSE, rotate_only = FALSE;
   int double_click_radius = 10, c, sample_freq = 120;
 
   while ((c = getopt (argc, argv, "btpofhr:s:e:d:a:")) != -1)
@@ -995,7 +998,6 @@ main (int argc, char **argv)
   clutter_backend_set_double_click_distance (clutter_get_default_backend (),
                                              double_click_radius);
 
-  const char* folder;
   if (optind < argc)
     folder = argv[optind];
   else
@@ -1011,15 +1013,39 @@ main (int argc, char **argv)
    */
   clutter_set_motion_events_enabled (FALSE);
 
-  if (!fullscreen)
+  if (!fullscreen) {
     clutter_actor_set_size (stage, 800, 600);
+    construct_stage ();
+  } else {
+    g_signal_connect (stage, "fullscreen", G_CALLBACK(construct_stage), NULL);
+    clutter_actor_show_all (stage);
+  }
+
+  clutter_main ();
+
+  return 0;
+}
+
+void
+construct_stage()
+{
+  static gboolean constructed = FALSE;
+  if (constructed)
+    return;
+  constructed = TRUE;
+  ClutterActor *stage, *viewport, *group;
+  stage = clutter_stage_get_default ();
+
+  stage_width = clutter_actor_get_width (stage);
+  stage_height = clutter_actor_get_height (stage);
+
   viewport = tidy_viewport_new ();
   g_viewport = viewport;
 
-  clutter_actor_set_clip (viewport, 0, 0, CLUTTER_STAGE_WIDTH(), CLUTTER_STAGE_HEIGHT());
+  clutter_actor_set_clip (viewport, 0, 0, stage_width, stage_height);
 
   pic_group = group = tidy_depth_group_new ();
-  //  add_rects (stage, group);
+
   add_pics (stage, group, folder);
   clutter_container_add_actor (CLUTTER_CONTAINER (viewport), group);
   g_signal_connect (viewport, "notify::x-origin",
@@ -1055,7 +1081,7 @@ main (int argc, char **argv)
 
   gesture = clutter_gesture_new(CLUTTER_ACTOR(stage));
   clutter_gesture_set_gesture_mask(gesture, stage,
-                                   GESTURE_MASK_SLIDE | 
+                                   GESTURE_MASK_SLIDE |
                                    GESTURE_MASK_PINCH | GESTURE_MASK_ROTATE);
 
   g_signal_connect (gesture, "gesture-slide-event",
@@ -1075,8 +1101,4 @@ main (int argc, char **argv)
 #endif
 
 #endif
-  clutter_main ();
-
-  return 0;
 }
-
